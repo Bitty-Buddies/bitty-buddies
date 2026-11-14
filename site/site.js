@@ -82,6 +82,63 @@
     }
   });
 
+  // ---------- Jolly Winter advent calendar ----------
+  // js/advent.js is rebuilt just after midnight each day in December and only holds the doors opened so far.
+  const advBox = document.querySelector('[data-advent]');
+  const ADV = window.BBAdvent;
+  if (advBox && ADV && PACKS[ADV.pack]) {
+    const pack = PACKS[ADV.pack];
+    const area = advBox.parentElement;
+    const status = area.querySelector('.advent-status'), told = t => { const d = area.querySelector('.advent-detail'); if (d) d.textContent = t; };
+    const now = new Date();
+    const inDec = now.getFullYear() === ADV.year && now.getMonth() === 11;
+    const local = now.getFullYear() > ADV.year ? 25 : inDec ? Math.min(now.getDate(), 25) : 0;
+    const today = Math.max(ADV.openDay, local);
+    const byDay = {};
+    for (const [key, it] of Object.entries(pack.items)) if (it.day) byDay[it.day] = { key, it };
+    let seen = 0;
+    try { seen = Number(localStorage.getItem(`bb-advent-${ADV.year}`)) || 0; } catch { /* storage off: every visit opens today's door fresh */ }
+    const PAPER = ['red', 'green', 'gold', 'plum'];
+    for (let day = 1; day <= 25; day++) {
+      const found = day <= today ? byDay[day] : null;
+      let state = day > today ? 'shut' : !found ? 'soon' : day === today && day > seen ? 'today' : 'open';
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `door ${state}${state === 'open' ? ' past' : ''}`;
+      const inside = document.createElement('span'); inside.className = 'door-inside';
+      const flap = document.createElement('span'); flap.className = `door-flap ${PAPER[(day * 3) % 4]}`; flap.textContent = day;
+      if (found) {
+        inside.appendChild(gridToCanvas(PX.drawItem(PX.withDefaults(found.it), { pose: 'idle', frame: 0, blink: false })));
+        const n = document.createElement('span'); n.className = 'door-day'; n.textContent = day; inside.appendChild(n);
+      }
+      b.append(inside, flap);
+      const describe = () => state === 'shut' ? `Door ${day} opens on ${day} December. No peeking!`
+        : state === 'soon' ? `Door ${day} is opening. Check back in a few minutes.`
+        : state === 'today' ? `Door ${day} is ready. Open it!`
+        : `Door ${day}: ${found.it.name}, ${found.it.blurb}.`;
+      const label = () => b.setAttribute('aria-label', state === 'open' ? `Door ${day}: ${found.it.name}, ${found.it.blurb}` : state === 'today' ? `Door ${day}, ready to open` : `Door ${day}, not open yet`);
+      label();
+      b.addEventListener('mouseenter', () => told(describe()));
+      b.addEventListener('focus', () => told(describe()));
+      b.addEventListener('click', () => {
+        if (state === 'today') {
+          state = 'open'; b.classList.replace('today', 'open'); label();
+          try { localStorage.setItem(`bb-advent-${ADV.year}`, String(day)); } catch { /* fine */ }
+        }
+        told(describe());
+      });
+      advBox.appendChild(b);
+    }
+    if (status) {
+      if (!today) {
+        const first = new Date(ADV.year, 11, 1), midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const n = Math.round((first - midnight) / 86400000);
+        status.textContent = n === 1 ? 'The first door opens tomorrow!' : `The first door opens in ${n} days`;
+      } else if (today < 25) status.textContent = `Door ${today} is open today. Door ${today + 1} opens tomorrow.`;
+      else status.textContent = inDec ? 'All 25 doors are open. Merry Christmas!' : 'All 25 buddies are yours to keep.';
+    }
+  }
+
   // ---------- homepage pack tiles: a row of each pack's buddies ----------
   document.querySelectorAll('[data-tile]').forEach(box => {
     const pack = PACKS[box.dataset.tile];

@@ -1,4 +1,4 @@
-// Jolly Winter pack (draft for review) — original festive buddies.
+// Jolly Winter preview for the website: the buddies already shown before December. The full advent pack lives in src/packs.
 // Sprites face RIGHT; state = { pose: 'walk'|'idle'|'sit'|'sleep', frame: 0|1, blink: bool }
 (function (root, pack) {
   if (typeof module === 'object' && module.exports) module.exports = pack;
@@ -9,9 +9,10 @@
   return {
     id: 'winter',
     name: 'Jolly Winter',
+    advent: 2026,
     items: {
       elf: {
-        name: 'Jingle', blurb: 'workshop elf with a bell hat', move: 'walk', speed: 34,
+        name: 'Jingle', blurb: 'workshop elf with a bell hat', move: 'walk', speed: 34, day: 1,
         draw(P, s) {
           const c = { tunic: '#2E9A4A', tunicS: '#22743A', skin: '#F2C9A2', skinS: '#C99C74', hat: '#D6392F', hatS: '#A82A22', fur: '#F6F6F2', bell: '#E7B93C', belt: '#3A2A1C', buckle: '#E7B93C', legs: '#D6392F', boots: '#2E5C2B', cheek: '#F09AA0' };
           const low = s.pose === 'sit' || s.pose === 'sleep';
@@ -34,7 +35,7 @@
       },
 
       reindeer: {
-        name: 'Tinsel', blurb: 'reindeer with fairy-light antlers', move: 'walk', speed: 40, h: 17,
+        name: 'Tinsel', blurb: 'reindeer with fairy-light antlers', move: 'walk', speed: 40, h: 17, day: 8,
         draw(P0, s) {
           const P = { r: (x, y, w, h, c) => P0.r(x, y + 1, w, h, c), p: (x, y, c) => P0.p(x, y + 1, c) };
           const c = { fur: '#8B5A2B', furS: '#6B4423', belly: '#D9B48A', antler: '#C8A26A', nose: '#2A1A10', hoof: '#3A2A1C', collar: '#D6392F', bell: '#E7B93C', l1: '#FF5A5A', l2: '#5AD06A', l3: '#5AA8FF', l4: '#FFE066' };
@@ -62,7 +63,7 @@
       },
 
       snowman: {
-        name: 'Flake', blurb: 'snowman who rebuilds himself', move: 'hop', speed: 18, h: 18,
+        name: 'Flake', blurb: 'snowman who rebuilds himself', move: 'hop', speed: 18, h: 18, day: 12,
         draw(P0, s) {
           const P = { r: (x, y, w, h, c) => P0.r(x, y + 2, w, h, c), p: (x, y, c) => P0.p(x, y + 2, c) };
           const c = { snow: '#F7FAFF', snowS: '#CAD6E8', coal: '#2A2A30', carrot: '#F08A1C', scarf: '#3C74E0', scarfS: '#2A55AC', hat: '#2A2A30', band: '#D6392F', stick: '#7A4E2A' };
@@ -86,7 +87,7 @@
       },
 
       bear: {
-        name: 'Nook', blurb: 'polar bear cub in a bobble hat', move: 'walk', speed: 30,
+        name: 'Nook', blurb: 'polar bear cub in a bobble hat', move: 'walk', speed: 30, day: 18,
         draw(P, s) {
           const c = { fur: '#F4F6F8', furS: '#D2DAE4', line: '#9AA6B8', nose: '#2A2A30', hat: '#3CA0C8', hatS: '#2A7A9C', bobble: '#F6F6F2', pad: '#7A8696' };
           const low = s.pose === 'sit' || s.pose === 'sleep';
@@ -106,7 +107,7 @@
       },
 
       ginger: {
-        name: 'Snap', blurb: 'gingerbread pup with icing', move: 'hop', speed: 36,
+        name: 'Snap', blurb: 'gingerbread pup with icing', move: 'hop', speed: 36, day: 5,
         draw(P, s) {
           const c = { dough: '#C27A3A', doughS: '#9A5A26', icing: '#FFFFFF', gum: '#E8394A', gum2: '#3CB04A', dark: '#3A1E0A' };
           const low = s.pose === 'sit' || s.pose === 'sleep';
@@ -128,7 +129,7 @@
 
       // ---------- builds ----------
       tree: {
-        name: 'Twinkle Tree', blurb: 'decorated tree with a glowing star',
+        name: 'Twinkle Tree', blurb: 'decorated tree with a glowing star', day: 3,
         kind: 'build', move: 'none', w: 20, h: 28, feet: 28,
         glow: { x: 10, y: 3, r: 10, rgb: '255,220,120' },
         draw(P, s) {
@@ -144,7 +145,7 @@
       },
 
       gingerhouse: {
-        name: 'Gingerbread House', blurb: 'sweet little cottage with a candy door',
+        name: 'Gingerbread House', blurb: 'sweet little cottage with a candy door', day: 15,
         kind: 'build', move: 'none', w: 24, h: 20, feet: 20,
         glow: { x: 12, y: 13, r: 9, rgb: '255,200,120' },
         draw(P, s) {

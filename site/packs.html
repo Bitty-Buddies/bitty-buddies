@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bitty Buddies packs</title>
-  <meta name="description" content="Every Bitty Buddies pack: the free Critters and Builds, plus Fantasy Folk, Jolly Winter and a secret or two.">
+  <meta name="description" content="Every Bitty Buddies pack: the free Critters and Builds, plus Fantasy Folk, the Jolly Winter advent calendar and a secret or two.">
   <meta property="og:title" content="Bitty Buddies">
   <meta property="og:description" content="Tiny pixel pets that wander along the bottom of your screen.">
   <meta property="og:image" content="banner.png">
@@ -71,19 +71,29 @@
             <a class="btn discord pack-cta" href="https://discord.gg/aCHyjABJG7">Get notified on Discord<span class="discord-count" hidden></span></a>
           </article>
 
-          <article class="pack-card winter" id="winter">
-            <div class="pack-card-head"><h2>Jolly Winter</h2><span class="price-tag gift">Free from 1 Dec</span></div>
-            <p class="pack-sub">Festive friends and falling snow.</p>
-            <figure class="trailer">
-              <canvas data-trailer="winter" aria-label="Trailer for Jolly Winter, out 1 December: snow falls and piles up while an elf, a reindeer, a snowman and friends play by a twinkling tree."></canvas>
-              <button class="trailer-toggle" type="button">Pause</button>
-            </figure>
-            <div class="inventory compact" data-pack="winter"></div>
-            <ul class="price-list">
-              <li><strong>5 festive buddies:</strong> Jingle the elf, Tinsel the reindeer, Flake the snowman, Nook the polar bear and Snap the gingerbread pup</li>
-              <li><strong>2 builds:</strong> a Twinkle Tree and a Gingerbread House</li>
-              <li><strong>Let it snow:</strong> snow falls across your desktop and slowly piles up</li>
-            </ul>
+          <article class="pack-card winter advent-card" id="winter">
+            <div class="pack-card-head"><h2>Jolly Winter</h2><span class="price-tag gift">Free advent calendar</span></div>
+            <p class="pack-sub">25 festive buddies, one behind each door from 1 to 25 December.</p>
+            <div class="advent-layout">
+              <div class="advent-side">
+                <figure class="trailer">
+                  <canvas data-trailer="winter" aria-label="Trailer for Jolly Winter: snow falls and piles up while an elf, a reindeer, a snowman and friends play by a twinkling tree."></canvas>
+                  <button class="trailer-toggle" type="button">Pause</button>
+                </figure>
+                <ul class="price-list">
+                  <li><strong>A new buddy every day:</strong> a door opens each morning from 1 to 25 December, with a surprise behind every one</li>
+                  <li><strong>Pets and builds:</strong> festive friends, plus cosy things to build for them</li>
+                  <li><strong>Missed a day?</strong> Any doors you miss open together the next time you start Bitty Buddies</li>
+                  <li><strong>Yours to keep:</strong> every buddy stays after Christmas, free</li>
+                  <li><strong>Let it snow:</strong> snow falls across your desktop and slowly piles up</li>
+                </ul>
+              </div>
+              <div class="advent-main">
+                <p class="advent-status" aria-live="polite"></p>
+                <div class="advent" data-advent role="group" aria-label="Jolly Winter advent calendar"></div>
+                <p class="advent-detail" aria-live="polite">Hover or tap a door to see what's behind it.</p>
+              </div>
+            </div>
           </article>
 
           <article class="pack-card secret night-layer" id="secret">
@@ -114,7 +124,7 @@
   <script src="js/packs/critters.js?v=202611122256"></script>
   <script src="js/packs/fantasy.js?v=202611122256"></script>
   <script src="js/packs/builds.js?v=202611122256"></script>
-  <script src="js/soon/winter.js?v=202611122256"></script>
+  <script src="js/advent.js?v=202611122256"></script>
   <script src="js/soon/teaser.js?v=202611122256"></script>
   <script src="site.js?v=202611122256"></script>
   <script src="teaser-audio.js?v=202611122256"></script>
