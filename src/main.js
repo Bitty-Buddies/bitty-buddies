@@ -447,6 +447,7 @@ function buildTrayMenu() {
         { label: 'Start a battle!', click: () => send('play', 'battle') },
         { label: 'Throw a ball', click: () => send('play', 'ball') },
         { label: 'Drop some treats', click: () => send('play', 'treats') },
+        ...(PACKS.some(p => p.id === 'serverroom' && packUnlocked(p)) ? [{ label: '💥 Break a server!', click: () => send('play', 'outage') }] : []),
         { label: 'Dance party!', click: () => send('play', 'party') },
         { label: 'Conga line!', click: () => send('play', 'conga') },
         { label: 'Move things around!', click: () => send('play', 'tidy') },

@@ -1,6 +1,7 @@
 // Bitty Buddies overlay: runs the pets and builds on a transparent full-screen canvas.
 // Behaviours: wander, sit, nap, climb screen edges, chase + ride the mouse, battles,
 // fetch a ball, eat treats, dance parties, conga lines, emote bubbles and petting.
+// Server Room kit: cables from a UPS / network cabinet, boot-up lights, faults and engineers who fix them.
 (() => {
   const PX = window.BBPixel;
   const api = window.bb;
@@ -51,7 +52,7 @@
   }
 
   function frameFor(t, st) {
-    const key = [t.id, st.pose, st.frame, st.blink ? 1 : 0, t.dir].join('|');
+    const key = [t.id, st.pose, st.frame, st.blink ? 1 : 0, t.dir, st.power || '', st.step || 0, st.net === false ? 0 : 1, st.seed || 0, st.alert ? 1 : 0].join('|');
     let f = frames.get(key);
     if (!f) {
       let g = PX.drawItem(t.def, st);
@@ -76,8 +77,8 @@
   }
 
   // States where a pet is doing its own thing and shouldn't be pulled into games.
-  const LOCKED = ['held', 'ride', 'leap', 'climb', 'cling', 'battle', 'fall', 'dizzy', 'cheer', 'eat', 'carried', 'goGrab', 'haul', 'goWin', 'winJump', 'tug'];
-  const MOVERS = ['walk', 'chase', 'fetch', 'snack', 'conga', 'toWall', 'goGrab', 'haul', 'goWin'];
+  const LOCKED = ['held', 'ride', 'leap', 'climb', 'cling', 'battle', 'fall', 'dizzy', 'cheer', 'eat', 'carried', 'goGrab', 'haul', 'goWin', 'winJump', 'tug', 'goFix', 'fix'];
+  const MOVERS = ['walk', 'chase', 'fetch', 'snack', 'conga', 'toWall', 'goGrab', 'haul', 'goWin', 'goFix'];
 
   // ---------- things (pets + builds) ----------
   class Thing {
@@ -99,6 +100,10 @@
       this.side = 0; this.cy = 0; this.climbTo = 0;
       this.lunge = 0; this.knockT = 0; this.offX = 0;
       this.carry = null; this.goal = 0; this.carrier = null; this.win = null;
+      this.job = null;                          // engineers: the kit they're off to fix
+      if (this.def.power === 'device') {        // Server Room kit starts unplugged
+        this.power = 'off'; this.bootT = 0; this.faultT = rand(60, 150); this.pwr = null; this.lan = null; this.fixer = null;
+      }
     }
     wpx() { return this.def.w * scale; }
     hpx() { return this.def.h * scale; }
@@ -120,11 +125,17 @@
     }
     top() { return this.y - this.def.feet * scale + this.bounce(); }
     spriteState() {
-      if (this.isBuild) return { pose: 'idle', frame: this.frame, blink: false };
+      if (this.isBuild) {
+        const st = { pose: 'idle', frame: this.frame, blink: false };
+        if (this.def.power === 'device') Object.assign(st, { power: this.power, step: this.power === 'boot' ? Math.min(5, Math.floor(this.bootT / 0.45)) : 0, net: this.def.network === 'device' ? !!(this.lan && this.lan.prog >= 1) : true, seed: this.uid % 5 });
+        if (this.def.glow && things.some(k => k.power === 'fault')) st.alert = true;
+        return st;
+      }
       let pose = 'idle', frame = this.frame, blink = this.blink;
       if (this.moving() || this.state === 'climb' || this.state === 'dance' || this.lunge > 0) pose = 'walk';
       if (['sit', 'eat', 'dizzy'].includes(this.state)) pose = 'sit';
       if (this.state === 'sleep') pose = 'sleep';
+      if (this.state === 'fix') pose = 'fix';
       if (this.state === 'dizzy') blink = true;
       if (this.def.move === 'hop' && this.moving()) frame = Math.abs(Math.sin(this.hop * Math.PI)) < 0.25 ? 1 : 0;
       if (['fall', 'held', 'ride', 'leap', 'cling', 'winJump', 'tug'].includes(this.state)) frame = 0;
@@ -155,6 +166,10 @@
       const tr = nearestTreat(this);
       if (tr && Math.random() < 0.85) { this.set('snack', 14); this.target = tr; tr.claimed = this; return; }
       if (ball && Math.random() < 0.6) return this.set('fetch', rand(5, 9));
+      if (this.def.fixer) {                     // something's broken? an engineer's on it
+        const broken = things.find(k => k.power === 'fault' && (!k.fixer || !things.includes(k.fixer) || k.fixer.job !== k));
+        if (broken) { this.set('goFix', 25); this.job = broken; broken.fixer = this; this.say('!', 1.2); return; }
+      }
 
       const r = Math.random();
       if (this.nearBuild() && r < 0.5) return this.set(Math.random() < 0.5 ? 'sit' : 'sleep', rand(6, 14));
@@ -373,6 +388,22 @@
         }
         if (S === 'goGrab' && Math.abs(dx) < Math.max(3 * scale, this.wpx() / 4)) pickUp(this);
         else if (S === 'haul' && (Math.abs(dx) <= 2 * scale || this.timer < 0.1)) { putDown(this); return; }
+      } else if (S === 'goFix' || S === 'fix') {
+        const k = this.job;
+        if (!k || !things.includes(k) || k.power !== 'fault') { this.job = null; return this.next(); }
+        const spot = k.x + k.wpx() / 2 + (this.x + this.wpx() / 2 < k.x + k.wpx() / 2 ? -1 : 1) * (k.wpx() / 2 + this.wpx() * 0.3);
+        const dx = spot - (this.x + this.wpx() / 2);
+        if (S === 'goFix') {
+          if (Math.abs(dx) > 2 * scale) { this.dir = Math.sign(dx); this.x += this.dir * this.runSpeed() * dt; }
+          else { this.state = 'fix'; this.timer = rand(3, 4.5); this.dir = Math.sign(k.x + k.wpx() / 2 - (this.x + this.wpx() / 2)) || 1; }
+        } else {
+          this.sparkT = (this.sparkT || 0) - dt;
+          if (this.sparkT <= 0) { this.sparkT = 0.18; sparks(this.x + this.wpx() / 2 + this.dir * this.wpx() * 0.45, this.top() + 6 * scale, 3); }
+          if (this.timer - dt <= 0) {           // fixed! reboot it
+            k.power = 'boot'; k.bootT = 0; k.faultT = rand(60, 150); k.fixer = null; k.bubble = null;
+            this.job = null; heart(this); this.say('❤', 1.4); this.set('cheer', 1.2); return;
+          }
+        }
       } else if (S === 'dance') {
         this.dir = (Math.floor(clock * 2) + this.uid) % 2 ? 1 : -1;
       } else if (S === 'sleep') {
@@ -385,6 +416,99 @@
       this.x = clamp(this.x, 0, maxX);
       this.timer -= dt;
       if (this.timer <= 0) this.next();
+    }
+  }
+
+  // ---------- Server Room kit: cables, boot-up, faults ----------
+  // A UPS powers kit near it; a powered network cabinet links racks and storage near it.
+  // Cables snake out along the floor, the kit boots up, and now and then something breaks.
+  const REACH = 70;                            // in sprite pixels, so it scales with the size setting
+  function sparks(x, y, n = 4) {
+    for (let i = 0; i < n; i++) puff('spark', x, y, { vx: rand(-90, 90), vy: rand(-160, -40), g: 600, life: rand(.25, .45), col: pick(['#FFE066', '#FFFFFF', '#FFB43C']) });
+  }
+  function smoke(t) {
+    puff('smoke', t.x + rand(0.2, 0.8) * t.wpx(), t.top() + 2 * scale, { vx: rand(-8, 8), vy: rand(-30, -18), life: rand(1.4, 2.2) });
+  }
+  const mid = t => t.x + t.wpx() / 2;
+  const portX = (t, key) => t.x + (t.dir < 0 ? t.def.w - 1 - (t.def[key] ?? t.def.w / 2) : (t.def[key] ?? t.def.w / 2)) * scale + scale / 2;
+  function nearestSource(d, test, maxEach) {
+    let best = null, bd = Infinity;
+    for (const s of things) {
+      if (s === d || !test(s)) continue;
+      const dist = Math.abs(mid(s) - mid(d));
+      if (dist > REACH * scale || dist >= bd) continue;
+      const used = things.filter(o => o !== d && ((o.pwr && o.pwr.src === s) || (o.lan && o.lan.src === s))).length;
+      if (used >= maxEach) continue;
+      best = s; bd = dist;
+    }
+    return best;
+  }
+  function link(d, key, src, dt, onDone, onCut) {
+    let c = d[key];
+    if (c && c.src !== src && c.prog > 0) { c.prog -= dt / 0.35; if (c.prog <= 0) { d[key] = null; onCut && onCut(); } return; } // pull the old one back first
+    if (!src) { if (c) { c.prog -= dt / 0.35; if (c.prog <= 0) { d[key] = null; onCut && onCut(); } } return; }
+    if (!c || c.src !== src) c = d[key] = { src, prog: 0 };
+    if (c.prog < 1) { c.prog = Math.min(1, c.prog + dt / 0.8); if (c.prog >= 1) { sparks(portX(d, key === 'pwr' ? 'port' : 'lan'), H() - scale, 6); onDone && onDone(); } }
+  }
+  function updateKit(dt) {
+    for (const d of things) {
+      if (d.def.power !== 'device') continue;
+      const ups = d.state === 'held' ? null : nearestSource(d, s => s.def.power === 'source', 8);
+      link(d, 'pwr', ups, dt,
+        () => { if (d.power === 'off') { d.power = 'boot'; d.bootT = 0; } },
+        () => { d.power = 'off'; d.bubble = null; });
+      if (!d.pwr || d.pwr.prog < 1) { if (d.power !== 'off' && !d.pwr) d.power = 'off'; }
+      if (d.def.network === 'device') {
+        const sw = d.state === 'held' ? null : nearestSource(d, s => s.def.network === 'source' && s.power === 'on', 12);
+        link(d, 'lan', sw, dt);
+      }
+      if (d.power === 'boot') {
+        d.bootT += dt;
+        if (d.bootT >= 2.7) { d.power = 'on'; d.faultT = rand(60, 150); }
+      } else if (d.power === 'on') {
+        d.faultT -= dt;
+        if (d.faultT <= 0 && !things.some(k => k.power === 'fault')) breakKit(d);
+        else if (d.faultT <= 0) d.faultT = rand(20, 60);
+      } else if (d.power === 'fault') {
+        if (!d.fixer || !things.includes(d.fixer) || d.fixer.job !== d) callEngineer(d);
+        d.smokeT = (d.smokeT || 0) - dt;
+        if (d.smokeT <= 0) { d.smokeT = 0.35; smoke(d); }
+        if (!d.bubble) d.say('!', 4);
+      }
+    }
+  }
+  // The nearest engineer who isn't busy drops what they're doing (even a nap) and heads over.
+  function callEngineer(d) {
+    const free = things.filter(e => e.def.fixer && !e.job && ['idle', 'walk', 'sit', 'sleep', 'fall'].includes(e.state) && e.y >= H() - 1);
+    if (!free.length) return;
+    const e = free.sort((a, b) => Math.abs(mid(a) - mid(d)) - Math.abs(mid(b) - mid(d)))[0];
+    e.set('goFix', 25); e.job = d; d.fixer = e; e.say('!', 1.2);
+  }
+  function breakKit(d) {
+    if (!d || d.power !== 'on') return false;
+    d.power = 'fault'; d.fixer = null; d.say('!', 4); sparks(mid(d), d.top() + d.hpx() / 2, 10);
+    return true;
+  }
+  // A cable along the floor: out of one box, droops to the ground, into the other. Drawn in chunky pixels.
+  function drawCable(a, b, prog, colour, lift) {
+    const px = Math.max(2, Math.round(scale * 0.75));
+    const ay = H() - lift * scale, by = H() - lift * scale, fy = H() - px;
+    const len = Math.abs(b - a) + 2 * (fy - ay);
+    const n = Math.max(2, Math.ceil(len / px * prog));
+    ctx.fillStyle = colour;
+    for (let i = 0; i <= n; i++) {
+      const u = i / Math.max(1, len / px);
+      if (u > prog) break;
+      const t = u;
+      const x = a + (b - a) * t;
+      const y = Math.min(fy, ay + (fy - ay) * Math.min(1, Math.sin(Math.PI * t) * 3));
+      ctx.fillRect(Math.round(x - px / 2), Math.round(y - px / 2), px, px);
+    }
+  }
+  function drawCables() {
+    for (const d of things) {
+      if (d.pwr) drawCable(portX(d.pwr.src, 'port'), portX(d, 'port'), d.pwr.prog, '#15171C', 2);
+      if (d.lan) drawCable(portX(d.lan.src, 'lan'), portX(d, 'lan'), d.lan.prog, '#3C74E0', 3);
     }
   }
 
@@ -761,6 +885,8 @@
       ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
     }
 
+    drawCables();
+
     for (const tr of treats) {
       const art = TREATS[tr.kind];
       patternC(art, tr.x - (art.rows[0].length * scale) / 2, tr.y - art.rows.length * scale, scale);
@@ -812,6 +938,8 @@
           break;
         }
         case 'dust': ctx.fillStyle = '#C9C2B8'; ctx.fillRect(Math.round(p.x), Math.round(p.y), px, px); break;
+        case 'spark': ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), px, px); break;
+        case 'smoke': { const k = p.t / p.life, sz = Math.round(px * (1 + k * 2)); ctx.fillStyle = `rgba(90,94,104,${0.55 * (1 - k)})`; ctx.fillRect(Math.round(p.x - sz / 2), Math.round(p.y - sz / 2), sz, sz); break; }
         case 'crumb': ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), px, px); break;
         case 'confetti':
           ctx.fillStyle = p.col;
@@ -978,6 +1106,9 @@
       const a = pick(free);
       const b = free.filter(p => p !== a).sort((p, q) => Math.abs(p.x - a.x) - Math.abs(q.x - a.x))[0];
       startBattle(a, b);
+    } else if (action === 'outage') {
+      const live = things.filter(k => k.power === 'on');
+      if (live.length) breakKit(pick(live));
     } else if (action === 'ball') throwBall();
     else if (action === 'treats') dropTreats(3);
     else if (action === 'party') party();
@@ -1027,6 +1158,7 @@
     updateConga(dt);
     updateBall(dt);
     positionCarried();
+    updateKit(dt);
     updateTreats(dt);
     socialise();
 
