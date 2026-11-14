@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, dialog, shell, powerMonitor, net } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, dialog, shell, powerMonitor, net, safeStorage } = require('electron');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
@@ -244,11 +244,31 @@ ipcMain.handle('report:send', async (_e, data) => {
 });
 ipcMain.on('report:close', () => { if (reportWin) reportWin.close(); });
 
-// ---------- account: "Sign in to restore my packs" ----------
-// Opens the account server's sign-in page. Once signed in, it fetches the keys saved to the
-// account, unlocks each one on this PC, then signs out again (nothing about the account is kept here).
+// ---------- account: sign in with the website account ----------
+// Signing in is optional: free pets work without it. Once signed in the app stays signed in (the session
+// token is kept encrypted with Windows' own protection), and keys added to the account unlock by themselves:
+// on start-up, every few hours, and from the tray's "Check for new packs".
 const ACCOUNT_API = REPORT_URL ? new URL(REPORT_URL).origin : '';
+const accountFile = () => path.join(app.getPath('userData'), 'account.json');
+let account = null;            // { token, username }
 let signInWin = null;
+
+function loadAccount() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(accountFile(), 'utf8'));
+    const token = raw.enc && safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(raw.enc, 'base64')) : raw.token;
+    if (/^[0-9a-f]{64}$/.test(token || '')) account = { token, username: raw.username || '' };
+  } catch { account = null; }
+}
+function saveAccount() {
+  try {
+    if (!account) { fs.rmSync(accountFile(), { force: true }); return; }
+    const out = { username: account.username };
+    if (safeStorage.isEncryptionAvailable()) out.enc = safeStorage.encryptString(account.token).toString('base64');
+    else out.token = account.token;
+    fs.writeFileSync(accountFile(), JSON.stringify(out));
+  } catch { /* not fatal: they'd just sign in again next time */ }
+}
 
 function openSignInWindow() {
   if (!ACCOUNT_API) return;
@@ -263,7 +283,9 @@ function openSignInWindow() {
     const m = String(url).match(/\/account\/signed-in#token=([0-9a-f]{64})/);
     if (!m || done) return;
     done = true;
-    restorePacks(m[1]).finally(() => setTimeout(() => signInWin && !signInWin.isDestroyed() && signInWin.close(), 400));
+    if (account && account.token !== m[1]) signOutRemote(account.token);
+    account = { token: m[1], username: '' };
+    syncAccount({ announce: true }).finally(() => setTimeout(() => signInWin && !signInWin.isDestroyed() && signInWin.close(), 400));
   };
   const wc = signInWin.webContents;
   wc.on('will-redirect', (_e, url) => check(url));
@@ -274,39 +296,62 @@ function openSignInWindow() {
   signInWin.loadURL(`${ACCOUNT_API}/account/app`);
   signInWin.once('ready-to-show', () => signInWin.show());
   signInWin.on('closed', () => { signInWin = null; });
-  if (IS_MAC) app.focus({ steal: true });
 }
 
-async function restorePacks(token) {
-  const auth = { authorization: `Bearer ${token}` };
-  let data;
-  try {
-    const res = await net.fetch(`${ACCOUNT_API}/account/me`, { headers: auth });
-    data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'The account server said no.');
-  } catch (e) {
-    dialog.showMessageBox({ type: 'error', message: 'Couldn’t load your account', detail: e.message || 'Check you’re online and try again.' });
-    return;
-  }
-  net.fetch(`${ACCOUNT_API}/account/logout`, { method: 'POST', headers: auth }).catch(() => {});
-  const usable = (data.keys || []).filter(k => !k.revoked && k.key);
-  const unlocked = new Set();
-  let already = 0, failed = 0;
-  for (const k of usable) {
-    try { (await licence.activate(k.key)).forEach(id => unlocked.add((PACKS.find(p => p.id === id) || {}).name || id)); }
-    catch (e) { if (/already active/.test(e.message)) already++; else failed++; }
-  }
-  if (unlocked.size) refreshUnlocks();
-  const who = data.user ? data.user.username : 'your account';
-  if (!usable.length) {
-    dialog.showMessageBox({ type: 'info', message: `Signed in as ${who}`, detail: 'There are no licence keys on this account yet. When you buy a pack, it’s added to your account and you can restore it here.' });
-  } else if (unlocked.size) {
-    dialog.showMessageBox({ type: 'info', message: `🎉 Unlocked ${[...unlocked].join(' and ')}`, detail: `Your packs from ${who} are ready on this PC.` });
-  } else if (already && !failed) {
-    dialog.showMessageBox({ type: 'info', message: 'You’re all set', detail: `Everything on ${who} is already unlocked on this PC.` });
-  } else {
-    dialog.showMessageBox({ type: 'warning', message: 'Some keys couldn’t be unlocked', detail: 'Ask on the Bitty Buddies Discord and we’ll sort it out.' });
-  }
+const signOutRemote = token => net.fetch(`${ACCOUNT_API}/account/logout`, { method: 'POST', headers: { authorization: `Bearer ${token}` } }).catch(() => {});
+function signOut() {
+  if (!account) return;
+  signOutRemote(account.token);
+  account = null;
+  saveAccount();
+  buildTrayMenu();
+  dialog.showMessageBox({ type: 'info', message: 'Signed out', detail: 'Packs you’ve already unlocked stay unlocked on this PC.' });
+}
+
+// Fetch the account's keys and unlock any this PC doesn't have yet.
+// announce: show a message even when nothing changed (sign-in, or "Check for new packs").
+let syncing = null;
+function syncAccount({ announce = false } = {}) {
+  if (!account || !ACCOUNT_API) return Promise.resolve();
+  if (syncing) return syncing;
+  syncing = (async () => {
+    let data;
+    try {
+      const res = await net.fetch(`${ACCOUNT_API}/account/me`, { headers: { authorization: `Bearer ${account.token}` } });
+      data = await res.json().catch(() => ({}));
+      if (res.status === 401 || res.status === 403) {          // signed out on the server, or account locked/deleted
+        account = null; saveAccount(); buildTrayMenu();
+        dialog.showMessageBox({ type: 'info', message: 'You’ve been signed out of Bitty Buddies', detail: (data.error || 'Your sign-in ran out.') + ' Your unlocked packs stay unlocked. Sign in from the tray to pick up new ones.' });
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'The account server said no.');
+    } catch (e) {
+      if (announce) dialog.showMessageBox({ type: 'error', message: 'Couldn’t reach your account', detail: (e.message || '') + ' Check you’re online and try again.' });
+      return;                                                   // offline on a quiet check: try again later
+    }
+    account.username = data.user ? data.user.username : account.username;
+    saveAccount();
+    buildTrayMenu();
+    const usable = (data.keys || []).filter(k => !k.revoked && k.key);
+    const unlocked = new Set();
+    let already = 0, failed = 0;
+    for (const k of usable) {
+      try { (await licence.activate(k.key)).forEach(id => unlocked.add((PACKS.find(p => p.id === id) || {}).name || id)); }
+      catch (e) { if (/already active/.test(e.message)) already++; else failed++; }
+    }
+    if (unlocked.size) refreshUnlocks();
+    const who = account.username || 'your account';
+    if (unlocked.size) {
+      dialog.showMessageBox({ type: 'info', message: `🎉 Unlocked ${[...unlocked].join(' and ')}`, detail: `From your account, ${who}. Find them in the tray under Spawn and Build.` });
+    } else if (failed && announce) {
+      dialog.showMessageBox({ type: 'warning', message: 'Some keys couldn’t be unlocked', detail: 'Ask on the Bitty Buddies Discord and we’ll sort it out.' });
+    } else if (announce) {
+      dialog.showMessageBox({ type: 'info', message: `Signed in as ${who}`, detail: usable.length
+        ? 'Everything on your account is already unlocked on this PC. Packs you buy later unlock by themselves.'
+        : 'There are no packs on your account yet. When you buy one, it unlocks here by itself.' });
+    }
+  })().finally(() => { syncing = null; });
+  return syncing;
 }
 
 ipcMain.on('thing-menu', (_e, { uid, id }) => {
@@ -396,7 +441,12 @@ function buildTrayMenu() {
     },
     { type: 'separator' },
     { label: licence.status().active ? 'Licence keys…' : 'Enter licence key…', click: openLicenceWindow },
-    ...(ACCOUNT_API ? [{ label: 'Sign in to restore my packs…', click: openSignInWindow }] : []),
+    ...(!ACCOUNT_API ? [] : account ? [{
+      label: `Signed in as ${account.username || 'you'}`, submenu: [
+        { label: 'Check for new packs', click: () => syncAccount({ announce: true }) },
+        { label: 'Sign out', click: signOut }
+      ]
+    }] : [{ label: 'Sign in…', click: openSignInWindow }]),
     readyVersion
       ? { label: `🎉 Restart to update to v${readyVersion}`, click: () => setImmediate(() => autoUpdater.quitAndInstall()) }
       : { label: 'Check for updates…', click: () => checkForUpdates(true) },
@@ -517,6 +567,7 @@ app.whenReady().then(() => {
   if (IS_MAC && app.dock) app.dock.hide();
   loadSettings();
   licence.load();
+  loadAccount();
   createWindow();
   createTray();
   setupUpdates();
@@ -525,6 +576,11 @@ app.whenReady().then(() => {
   const recheck = () => licence.revalidate().then(result => { if (result === 'changed') refreshUnlocks(); });
   recheck();
   setInterval(recheck, 30 * 60 * 1000);
+
+  // Signed in? Pick up any new packs on the account now, every 3 hours, and after waking from sleep.
+  setTimeout(() => syncAccount(), 8000);
+  setInterval(() => syncAccount(), 3 * 60 * 60 * 1000);
+  powerMonitor.on('resume', () => setTimeout(() => syncAccount(), 30000));
 
   // Count this PC once per day/week/month it's used (checked hourly so long sessions roll over).
   setTimeout(statsCheckIn, 20000);
