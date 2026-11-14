@@ -448,6 +448,12 @@ function buildTrayMenu() {
         { label: 'Throw a ball', click: () => send('play', 'ball') },
         { label: 'Drop some treats', click: () => send('play', 'treats') },
         ...(PACKS.some(p => p.id === 'serverroom' && packUnlocked(p)) ? [{ label: '💥 Break a server!', click: () => send('play', 'outage') }] : []),
+        ...(PACKS.some(p => p.id === 'mitty' && packUnlocked(p)) ? [{
+          label: 'Feed Mitty', submenu: [
+            { label: '🍫  Chocolate', click: () => send('play', 'feed-chocolate') },
+            { label: '🍬  Sweets', click: () => send('play', 'feed-sweets') }
+          ]
+        }] : []),
         { label: 'Dance party!', click: () => send('play', 'party') },
         { label: 'Conga line!', click: () => send('play', 'conga') },
         { label: 'Move things around!', click: () => send('play', 'tidy') },
