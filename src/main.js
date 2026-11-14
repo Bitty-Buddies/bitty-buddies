@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, dialog, shell, powerMonitor, net, safeStorage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, screen, nativeImage, dialog, shell, powerMonitor, net, safeStorage, Notification } = require('electron');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
@@ -21,13 +21,17 @@ const PACKS = PACK_FILES.map(file => ({ file, ...require(path.join(__dirname, 'p
 const ITEMS = {};
 for (const p of PACKS) {
   for (const [key, it] of Object.entries(p.items)) {
-    ITEMS[`${p.id}/${key}`] = { id: `${p.id}/${key}`, pack: p, name: it.name, blurb: it.blurb || '', kind: it.kind || 'pet' };
+    ITEMS[`${p.id}/${key}`] = { id: `${p.id}/${key}`, pack: p, name: it.name, blurb: it.blurb || '', kind: it.kind || 'pet', day: it.day || 0 };
   }
 }
 
 // Packs with `licensed: true` need a valid licence key that covers them.
 const packUnlocked = p => !p.licensed || licence.isUnlocked(p.id);
-const itemUnlocked = id => !!ITEMS[id] && packUnlocked(ITEMS[id].pack);
+// Advent calendar packs (`advent: <year>`): each item's `day` opens on that day of December by this PC's
+// clock and then stays open for good. Days missed while the app was closed all open together.
+const opensAt = i => new Date(i.pack.advent, 11, i.day).getTime();
+const dayOpen = i => !i.pack.advent || !i.day || Date.now() >= opensAt(i);
+const itemUnlocked = id => !!ITEMS[id] && packUnlocked(ITEMS[id].pack) && dayOpen(ITEMS[id]);
 const unlockedPackFiles = () => PACKS.filter(packUnlocked).map(p => p.file);
 
 // ---------- settings ----------
@@ -375,18 +379,60 @@ ipcMain.on('thing-menu', (_e, { uid, id }) => {
 function spawnMenu(kind) {
   const packs = PACKS
     .map(p => ({ p, items: Object.values(ITEMS).filter(i => i.pack === p && i.kind === kind) }))
-    .filter(g => g.items.length);
+    .filter(g => g.items.length)
+    .filter(g => !g.p.hidden || packUnlocked(g.p)); // private packs don't even show as locked
   const toEntry = i => ({ label: i.blurb ? `${i.name}  —  ${i.blurb}` : i.name, click: () => send('spawn', i.id) });
   const lockedEntries = g => [
     { label: `${g.items.map(i => i.name).join(', ')}`, enabled: false },
     { type: 'separator' },
     { label: 'Unlock with a licence key…', click: openLicenceWindow }
   ];
-  const group = g => packUnlocked(g.p)
+  const group = g => g.p.advent ? adventGroup(g, toEntry) : packUnlocked(g.p)
     ? { label: g.p.name, submenu: g.items.map(toEntry) }
     : { label: `🔒 ${g.p.name}`, submenu: lockedEntries(g) };
   if (packs.length === 1) return packUnlocked(packs[0].p) ? packs[0].items.map(toEntry) : lockedEntries(packs[0]);
   return packs.map(group);
+}
+
+// An advent pack's menu: the doors opened so far, in order, and when the next one opens.
+function adventGroup(g, toEntry) {
+  const all = Object.values(ITEMS).filter(i => i.pack === g.p && i.day).sort((a, b) => a.day - b.day);
+  const open = all.filter(dayOpen);
+  const next = all.find(i => !dayOpen(i));
+  const mine = g.items.filter(dayOpen).sort((a, b) => a.day - b.day)
+    .map(i => ({ ...toEntry(i), label: `${i.day}.  ${toEntry(i).label}` }));
+  const info = [];
+  if (next) {
+    const when = new Date(opensAt(next));
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.round((when - today) / 86400000);
+    info.push({ label: !open.length ? `🎄 The first door opens ${days === 1 ? 'tomorrow' : `on ${next.day} December`}` : `🎁 Door ${next.day} opens ${days === 1 ? 'tomorrow' : `on ${next.day} December`}`, enabled: false });
+  } else info.push({ label: '🎄 All 25 doors are open. Merry Christmas!', enabled: false });
+  return { label: `🎄 ${g.p.name} (${open.length} of ${all.length})`, submenu: [...mine, ...(mine.length ? [{ type: 'separator' }] : []), ...info] };
+}
+
+// Tells the user when new advent doors open (on start-up, after sleep, and as midnight passes).
+function checkAdvent() {
+  if (!settings.advent || typeof settings.advent !== 'object') settings.advent = {};
+  let changed = false;
+  for (const p of PACKS.filter(x => x.advent && packUnlocked(x))) {
+    const open = Object.values(ITEMS).filter(i => i.pack === p && i.day && dayOpen(i)).sort((a, b) => a.day - b.day);
+    const fresh = open.filter(i => i.day > (settings.advent[p.id] || 0));
+    if (!fresh.length) continue;
+    settings.advent[p.id] = open[open.length - 1].day;
+    changed = true;
+    const last = fresh[fresh.length - 1];
+    const title = fresh.length === 1 ? `🎄 Door ${last.day} is open: ${last.name}!` : `🎄 ${fresh.length} advent doors are open!`;
+    const body = fresh.length === 1
+      ? `${last.blurb.charAt(0).toUpperCase()}${last.blurb.slice(1)}. Click to bring ${last.kind === 'build' ? 'it' : 'them'} to your desktop.`
+      : `${fresh.map(i => i.name).join(', ')}. Find them in the tray under Spawn and Build. Click to meet ${last.name}.`;
+    if (Notification.isSupported()) {
+      const n = new Notification({ title, body, icon: path.join(__dirname, '..', 'assets', 'tray.png') });
+      n.on('click', () => send('spawn', last.id));
+      n.show();
+    }
+  }
+  if (changed) { saveSettings(); buildTrayMenu(); }
 }
 
 function buildTrayMenu() {
@@ -557,6 +603,11 @@ app.whenReady().then(() => {
   const recheck = () => licence.revalidate().then(result => { if (result === 'changed') refreshUnlocks(); });
   recheck();
   setInterval(recheck, 30 * 60 * 1000);
+
+  // Advent calendar doors: check now, every few minutes (so a door opens just after midnight) and after sleep.
+  setTimeout(checkAdvent, 6000);
+  setInterval(checkAdvent, 5 * 60 * 1000);
+  powerMonitor.on('resume', () => setTimeout(checkAdvent, 10000));
 
   // Signed in? Pick up any new packs on the account now, every 3 hours, and after waking from sleep.
   setTimeout(() => syncAccount(), 8000);
