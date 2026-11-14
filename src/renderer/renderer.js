@@ -77,7 +77,7 @@
   }
 
   // States where a pet is doing its own thing and shouldn't be pulled into games.
-  const LOCKED = ['held', 'ride', 'leap', 'climb', 'cling', 'battle', 'fall', 'dizzy', 'cheer', 'eat', 'carried', 'goGrab', 'haul', 'goWin', 'winJump', 'tug', 'goFix', 'fix'];
+  const LOCKED = ['held', 'ride', 'leap', 'climb', 'cling', 'battle', 'fall', 'dizzy', 'cheer', 'eat', 'love', 'carried', 'goGrab', 'haul', 'goWin', 'winJump', 'tug', 'goFix', 'fix'];
   const MOVERS = ['walk', 'chase', 'fetch', 'snack', 'conga', 'toWall', 'goGrab', 'haul', 'goWin', 'goFix'];
 
   // ---------- things (pets + builds) ----------
@@ -135,6 +135,9 @@
       if (this.moving() || this.state === 'climb' || this.state === 'dance' || this.lunge > 0) pose = 'walk';
       if (['sit', 'eat', 'dizzy'].includes(this.state)) pose = 'sit';
       if (this.state === 'sleep') pose = 'sleep';
+      if (this.state === 'love') pose = 'sit';
+      const own = this.def.poses || [];              // some pets have their own poses (Mitty's eat and love)
+      if (own.includes(this.state)) pose = this.state;
       if (this.state === 'fix') pose = 'fix';
       if (this.state === 'dizzy') blink = true;
       if (this.def.move === 'hop' && this.moving()) frame = Math.abs(Math.sin(this.hop * Math.PI)) < 0.25 ? 1 : 0;
@@ -180,7 +183,11 @@
         if (r < 0.215 && windowGrab && !things.some(o => o.win)) { startWindowTug(this); if (this.win) return; }
       }
       if (r < 0.5) this.set('walk', rand(2, 7));
-      else if (r < 0.72) { this.set('idle', rand(2, 5)); if (Math.random() < 0.25) this.say(pick(['?', '♪', '❤'])); }
+      else if (r < 0.72) {
+        this.set('idle', rand(2, 5));
+        if (this.def.favourite && Math.random() < 0.3) this.say(pick(['🍫', '🍬']), 2.2);   // Mitty hinting for a treat
+        else if (Math.random() < 0.25) this.say(pick(['?', '♪', '❤']));
+      }
       else if (r < 0.88) this.set('sit', rand(3, 8));
       else this.set('sleep', rand(8, 16));
     }
@@ -366,18 +373,30 @@
         if (this.crumbT <= 0) {
           this.crumbT = 0.22;
           const tx = this.x + this.wpx() / 2 + this.dir * 4 * scale;
-          puff('crumb', tx, ground - 3 * scale, { vx: rand(-80, 80), vy: rand(-220, -120), g: 1400, life: 0.5, col: pick(['#D9A35B', '#6B4423', '#F3E2C3']) });
+          const crumbs = (this.target && TREATS[this.target.kind] && TREATS[this.target.kind].crumbs) || ['#D9A35B', '#6B4423', '#F3E2C3'];
+          puff('crumb', tx, ground - 3 * scale, { vx: rand(-80, 80), vy: rand(-220, -120), g: 1400, life: 0.5, col: pick(crumbs) });
         }
         this.timer -= dt;
         if (this.timer <= 0) {
           const tr = this.target;
           const i = treats.indexOf(tr);
           if (i >= 0) treats.splice(i, 1);
-          heart(this); this.say('❤', 1.2);
+          const special = tr && tr.forUid === this.uid;
           this.target = null;
-          this.set('sit', rand(2, 4));
+          if (special) {
+            // A treat just for her: a happy little moment with a burst of hearts.
+            this.set('love', rand(3, 4.5));
+            for (let k = 0; k < 4; k++) setTimeout(() => { if (things.includes(this)) heart(this); }, k * 350);
+            this.say(pick(['❤', '😋', 'prr']), 2);
+          } else {
+            heart(this); this.say('❤', 1.2);
+            this.set('sit', rand(2, 4));
+          }
         }
         return;
+      } else if (S === 'love') {
+        this.crumbT -= dt;
+        if (this.crumbT <= 0) { this.crumbT = 0.7; heart(this); }
       } else if (S === 'goGrab' || S === 'haul') {
         if (!carryStillValid(this)) { this.carry = null; return this.next(); }
         const tx = S === 'goGrab' ? carryX(this.carry) : this.goal + this.wpx() / 2;
@@ -604,19 +623,46 @@
     cookie: { rows: ['.CCCC.', 'CCDCCC', 'CCCCDC', 'CDCCCC', 'CCCDCC', '.CCCC.'], cols: { C: '#D9A35B', D: '#6B4423' } },
     bone: { rows: ['WW....WW', 'WWWWWWWW', 'WWWWWWWW', 'WW....WW'], cols: { W: '#F3EFE6' } },
     fish: { rows: ['..BBB..B', '.BBBBBBB', 'BEBBBBB.', '.BBBBBBB', '..BBB..B'], cols: { B: '#5DA0E0', E: '#1B1B1B' } },
-    berry: { rows: ['..G.', '.RR.', 'RRWR', 'RRRR', '.RR.'], cols: { R: '#E04466', W: '#FFC0D0', G: '#58C24A' } }
+    berry: { rows: ['..G.', '.RR.', 'RRWR', 'RRRR', '.RR.'], cols: { R: '#E04466', W: '#FFC0D0', G: '#58C24A' } },
+    // Mitty's treats (only dropped by Feed Mitty, never by "Drop some treats").
+    chocbar: { mitty: true, rows: ['SSSSSSS', 'BBDBBDB', 'BDBBDBB', 'RRRRRRR'], cols: { S: '#D8DCE4', B: '#7A4424', D: '#5A2E16', R: '#C8283A' }, crumbs: ['#7A4424', '#5A2E16', '#D8DCE4'] },
+    chocheart: { mitty: true, rows: ['.BB.BB.', 'BLBBBBB', 'BBBBBBB', '.BBBBB.', '..BBB..', '...B...'], cols: { B: '#6A3418', L: '#A0603A' }, crumbs: ['#6A3418', '#A0603A'] },
+    sweet: { mitty: true, rows: ['T.PPP.T', 'TTPWPTT', 'T.PPP.T'], cols: { P: '#F05A9A', W: '#FFC0DC', T: '#F8A8CC' }, crumbs: ['#F05A9A', '#FFC0DC', '#FFFFFF'] },
+    sweet2: { mitty: true, rows: ['T.GGG.T', 'TTGWGTT', 'T.GGG.T'], cols: { G: '#3CC8B0', W: '#B8F4E8', T: '#88E0D0' }, crumbs: ['#3CC8B0', '#B8F4E8', '#FFFFFF'] },
+    lolly: { mitty: true, rows: ['.YRY.', 'YRYRY', 'RYRYR', '.YRY.', '..W..', '..W..'], cols: { Y: '#FFE066', R: '#E8394A', W: '#F4F2EE' }, crumbs: ['#FFE066', '#E8394A'] }
   };
   function dropTreats(n = 3) {
     for (let i = 0; i < n; i++) {
-      const kind = pick(Object.keys(TREATS));
+      const kind = pick(Object.keys(TREATS).filter(k => !TREATS[k].mitty));
       treats.push({ kind, x: rand(0.1, 0.9) * W(), y: -rand(10, 260), vy: 0, landed: false, claimed: null, life: 60 });
     }
     pets().forEach(p => { if (['walk', 'idle', 'sit', 'sleep'].includes(p.state)) p.say('!', 1); });
   }
+  // Feed Mitty: drop chocolate or sweets right next to her (spawning her first if needed).
+  // Only she can eat them, and she drops whatever she's doing to come and get them.
+  function feedFavourite(what) {
+    const fav = id => REG[id] && REG[id].favourite;
+    let pet = things.find(t => !t.isBuild && fav(t.id));
+    if (!pet) {
+      const id = Object.keys(REG).find(fav);
+      if (!id) return;
+      pet = new Thing(id); things.push(pet); report();
+    }
+    const kinds = what === 'chocolate' ? [pick(['chocbar', 'chocheart'])] : ['sweet', 'sweet2', 'lolly'];
+    const cx = clamp(pet.x + pet.wpx() / 2, 40, W() - 40);
+    kinds.forEach((kind, i) => {
+      const x = clamp(cx + (i - (kinds.length - 1) / 2) * 14 * scale + rand(-20, 20) + (i === 0 && kinds.length === 1 ? pet.dir * 18 * scale : 0), 20, W() - 20);
+      treats.push({ kind, x, y: -rand(10, 120) - i * 60, vy: 0, landed: false, claimed: null, life: 90, forUid: pet.uid });
+    });
+    if (!['held', 'ride', 'carried', 'battle', 'climb', 'cling', 'eat', 'snack'].includes(pet.state)) {
+      const first = treats.find(t => t.forUid === pet.uid && !t.claimed);
+      pet.set('snack', 20); pet.target = first; first.claimed = pet; pet.say('!', 1);
+    }
+  }
   function nearestTreat(p) {
     const cx = p.x + p.wpx() / 2;
     let best = null, bd = Infinity;
-    for (const t of treats) if (!t.claimed) { const d = Math.abs(t.x - cx); if (d < bd) { bd = d; best = t; } }
+    for (const t of treats) if (!t.claimed && (!t.forUid || t.forUid === p.uid)) { const d = Math.abs(t.x - cx); if (d < bd) { bd = d; best = t; } }
     return best;
   }
   function updateTreats(dt) {
@@ -819,7 +865,11 @@
     '!': { rows: ['X', 'X', 'X', '.', 'X'], col: '#E04444' },
     '?': { rows: ['XXX', '..X', '.XX', '...', '.X.'], col: '#3C74E0' },
     '♪': { rows: ['..XX', '..X.', '..X.', 'XXX.', 'XX..'], col: '#8B5CF6' },
-    '❤': { rows: ['.X.X.', 'XXXXX', 'XXXXX', '.XXX.', '..X..'], col: '#FF4F7B' }
+    '❤': { rows: ['.X.X.', 'XXXXX', 'XXXXX', '.XXX.', '..X..'], col: '#FF4F7B' },
+    '🍫': { rows: ['XXXXX', 'X.X.X', 'XXXXX', 'X.X.X', 'XXXXX'], col: '#7A4424' },
+    '🍬': { rows: ['X...X', 'XXXXX', '.XXX.', 'XXXXX', 'X...X'], col: '#F05A9A' },
+    '😋': { rows: ['X...X', '.....', 'X...X', '.XXX.', '..XX.'], col: '#E8394A' },
+    'prr': { rows: ['XX.X.', 'X.XX.', 'XX.X.', 'X..X.', 'X..X.'], col: '#8B5CF6' }
   };
   const BALL = { rows: ['.RRRR.', 'RWRRRR', 'RRRRRR', 'RRYYRR', 'RRRRRD', '.RDDD.'], cols: { R: '#E0483A', W: '#FFFFFF', Y: '#FFD84A', D: '#A82E24' } };
 
@@ -1111,6 +1161,8 @@
       if (live.length) breakKit(pick(live));
     } else if (action === 'ball') throwBall();
     else if (action === 'treats') dropTreats(3);
+    else if (action === 'feed-chocolate') feedFavourite('chocolate');
+    else if (action === 'feed-sweets') feedFavourite('sweets');
     else if (action === 'party') party();
     else if (action === 'conga') startConga();
     else if (action === 'tidy') {

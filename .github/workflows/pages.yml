@@ -34,7 +34,7 @@ jobs:
           cp -r site/. _site/
           cp src/shared/pixel.js _site/js/
           cp src/packs/*.js _site/js/packs/
-          rm _site/js/packs/index.js
+          rm -f _site/js/packs/index.js _site/js/packs/mitty.js   # Mitty's Pack is private: never on the website
           # bust browser caches: every deploy gets fresh script and style URLs
           V=$(date +%s); sed -i -E "s#\?v=[0-9]+#?v=$V#g" _site/*.html
           cp .github/banner.png _site/banner.png
