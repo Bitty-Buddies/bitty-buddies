@@ -13,7 +13,7 @@
   const cache = new Map();
   function sprite(packId, key, st) {
     const def = PX.withDefaults(PACKS[packId].items[key]);
-    const id = [packId, key, st.pose, st.frame, st.blink ? 1 : 0, st.flip ? 1 : 0].join('|');
+    const id = [packId, key, st.pose, st.frame, st.blink ? 1 : 0, st.flip ? 1 : 0, st.power || '', st.step || 0, st.net === false ? 0 : 1, st.seed || 0, st.alert ? 1 : 0].join('|');
     let c = cache.get(id);
     if (!c) {
       let g = PX.drawItem(def, st);
@@ -542,6 +542,100 @@
         a.rect(f.x, f.y, f.s, f.s, '#FFFFFF');
       }
       for (let x = 0; x < W; x += 2) { const h = Math.round((state.drift[x] + (state.drift[x + 1] || 0)) / 2); if (h) a.rect(x, G - h, 2, h, '#F7FAFF'); }
+    });
+  }
+  // ---------- Server Room ----------
+  // The lights come on: cables snake out of the UPS, racks boot up, the network links up,
+  // then one rack breaks and the sysadmin runs over and fixes it. Drawn zoomed in (1.5x).
+  const srvBox = document.querySelector('[data-trailer="serverroom"]');
+  if (srvBox && PACKS.serverroom) {
+    const LEN = 22, Z = 1.5, W2 = 160, H2 = 60, G = 54;
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const kit = [                                   // x = centre, when its power and network cables arrive
+      { key: 'rack', x: 44, pwr: 2.0, lan: 7.0, seed: 1 },
+      { key: 'rack', x: 61, pwr: 2.8, lan: 7.4, seed: 3, breaks: true },
+      { key: 'netcab', x: 82, pwr: 3.6 },
+      { key: 'storage', x: 100, pwr: 4.4, lan: 7.8, seed: 2 }
+    ];
+    const UPS = 23, BREAK = 11.5, FIXED = 16.5, HOME = 124, FIXAT = 72;
+    const def = k => PACKS.serverroom.items[k];
+    const port = (k, which) => k.x - def(k.key).w / 2 + def(k.key)[which] + 0.5;
+    function cable(a, x1, x2, prog, col, lift) {
+      if (prog <= 0) return;
+      const n = Math.ceil(Math.abs(x2 - x1) + lift * 2), fy = G - 1;
+      for (let i = 0; i <= n * Math.min(1, prog); i++) {
+        const u = i / n, x = x1 + (x2 - x1) * u;
+        const y = Math.min(fy, G - lift + lift * Math.min(1, Math.sin(Math.PI * u) * 3));
+        a.rect(x, y, 1, 1, col);
+      }
+    }
+    function powerOf(k, t) {
+      const on = k.pwr + 0.8;
+      if (t < on) return { power: 'off' };
+      if (k.breaks && t >= BREAK && t < FIXED) return { power: 'fault' };
+      if (k.breaks && t >= FIXED && t < FIXED + 2.7) return { power: 'boot', step: Math.min(5, Math.floor((t - FIXED) / 0.45)) };
+      if (t < on + 2.7) return { power: 'boot', step: Math.min(5, Math.floor((t - on) / 0.45)) };
+      return { power: 'on' };
+    }
+    trailer(srvBox, LEN, (a, t) => {
+      const { ctx, W, H, frame, state } = a;
+      if (!state.smoke) state.smoke = [];
+      ctx.fillStyle = '#141820'; ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.scale(Z, Z);
+      const lit = clamp(span(t, 2, 6), 0, 1);
+      const glow = ctx.createRadialGradient(W2 / 2, 26, 0, W2 / 2, 26, 95);
+      glow.addColorStop(0, `rgba(90,180,255,${0.08 + 0.16 * lit})`); glow.addColorStop(1, 'rgba(90,180,255,0)');
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, W2, H2);
+      for (let x = 0; x < W2; x += 20) a.rect(x, 4, 10, 2, '#262C38');                 // ceiling cable tray
+      a.rect(0, 6, W2, 1, '#1E2430');
+      a.rect(0, G, W2, H2 - G, '#3A404C');
+      for (let x = 0; x < W2; x += 10) a.rect(x, G, 1, H2 - G, '#2E333E');
+      a.rect(0, G, W2, 1, '#4A515E');
+      const alert = t >= BREAK && t < FIXED;
+
+      a.put('serverroom', 'cooling', 8, G, { frame });
+      a.put('serverroom', 'ups', UPS, G, { frame });
+      a.put('serverroom', 'desk', 145, G, { frame, alert });
+      for (const k of kit) {                            // cables first, so they sit behind the kit
+        cable(a, UPS + 5.5, port(k, 'port'), span(t, k.pwr, k.pwr + 0.8), '#0C0E12', 4);
+        if (k.lan) cable(a, port(kit[2], 'lan'), port(k, 'lan'), span(t, k.lan, k.lan + 0.7), '#3C74E0', 6);
+      }
+      for (const k of kit) {
+        a.put('serverroom', k.key, k.x, G, { frame, seed: k.seed || 0, net: !k.lan || t >= k.lan + 0.7, ...powerOf(k, t) });
+        if (t > k.pwr + 0.8 && t < k.pwr + 1.0) for (let i = 0; i < 3; i++) a.rect(port(k, 'port') + rand(-2, 2), G - 2 - rand(0, 3), 1, 1, '#FFE066');
+      }
+      const bad = kit[1];
+      if (alert) {                                      // smoke and a warning bubble over the broken rack
+        if (Math.random() < 0.25) state.smoke.push({ x: bad.x + rand(-5, 5), y: G - 30, life: 0 });
+        const by = G - 40;
+        a.rect(bad.x - 4, by - 1, 9, 9, '#2E345C'); a.rect(bad.x - 3, by, 7, 7, '#FFFFFF');
+        a.rect(bad.x, by + 1, 1, 3, '#E04444'); a.rect(bad.x, by + 5, 1, 1, '#E04444');
+      }
+      state.smoke = state.smoke.filter(p => (p.life += 1 / 60) < 1.8);
+      for (const p of state.smoke) { const sz = 1 + p.life * 2; ctx.fillStyle = `rgba(110,114,124,${0.6 * (1 - p.life / 1.8)})`; ctx.fillRect(p.x - sz / 2, p.y - p.life * 14, sz, sz); }
+
+      // the team
+      const run = t > BREAK + 0.3 && t < BREAK + 1.8, back = t > FIXED + 3;
+      const sysX = t < 4 ? lerp(180, HOME, span(t, 0, 4)) : t < BREAK + 0.3 ? HOME : run ? lerp(HOME, FIXAT, span(t, BREAK + 0.3, BREAK + 1.8)) : !back ? FIXAT : lerp(FIXAT, HOME, span(t, FIXED + 3, LEN - 0.5));
+      const fixing = t >= BREAK + 1.8 && t < FIXED;
+      a.put('serverroom', 'sysadmin', sysX, G, { pose: t < 4 || run || back ? 'walk' : fixing ? 'fix' : 'idle', frame, flip: t < 4 || run || fixing });
+      if (fixing && frame) for (let i = 0; i < 3; i++) a.rect(sysX - 9 + rand(-1, 2), G - 9 + rand(-2, 2), 1, 1, pick(['#FFE066', '#FFFFFF', '#FFB43C']));
+      if (t >= FIXED && t < FIXED + 1.2) {             // a little heart when it's fixed
+        const hy = G - 22 - (t - FIXED) * 8;
+        [[-2, 0, 2], [1, 0, 2], [-2, 1, 5], [-1, 2, 3], [0, 3, 1]].forEach(([dx, dy, w]) => a.rect(sysX + dx, hy + dy, w, 1, '#FF4F7B'));
+      }
+      a.put('serverroom', 'neteng', t < 6 ? lerp(-12, 113, span(t, 1, 6)) : 113, G, { pose: t > 1 && t < 6 ? 'walk' : 'idle', frame });
+      a.put('serverroom', 'cat', 33, G, { pose: t > 9 ? 'sleep' : 'sit', frame, flip: true });
+      ctx.restore();
+
+      if (t > LEN - 4.2) {                             // title card
+        const k = clamp(span(t, LEN - 4.2, LEN - 3.4), 0, 1);
+        ctx.fillStyle = `rgba(10,14,20,${0.6 * k})`; ctx.fillRect(0, 0, W, H);
+        ctx.globalAlpha = k;
+        a.text('SERVER ROOM', W / 2, 32, 18, '#7AF09A', 'rgba(90,224,106,.8)');
+        a.text('Plug it in. Boot it up. Fix it.', W / 2, 50, 7, '#E8F0FA');
+        ctx.globalAlpha = 1;
+      }
     });
   }
 })();
