@@ -5,10 +5,11 @@ name: Website
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'src/packs/**', 'src/shared/**', '.github/banner.png', 'build/icon.png', '.github/workflows/pages.yml']
+    paths: ['site/**', 'src/packs/**', 'src/shared/**', 'scripts/advent-site.js', '.github/banner.png', 'build/icon.png', '.github/workflows/pages.yml']
   workflow_dispatch:
   schedule:
     - cron: '17 */6 * * *'   # refresh the saved Discord member count
+    - cron: '2 0 * 12 *'     # open the next advent calendar door just after midnight (UK time in December)
 
 permissions:
   contents: read
@@ -35,6 +36,9 @@ jobs:
           cp src/shared/pixel.js _site/js/
           cp src/packs/*.js _site/js/packs/
           rm -f _site/js/packs/index.js _site/js/packs/mitty.js   # Mitty's Pack is private: never on the website
+          # Jolly Winter: only the advent doors opened so far go on the site, so nobody can peek ahead
+          rm -f _site/js/packs/winter.js _site/js/soon/winter.js
+          node scripts/advent-site.js > _site/js/advent.js
           # bust browser caches: every deploy gets fresh script and style URLs
           V=$(date +%s); sed -i -E "s#\?v=[0-9]+#?v=$V#g" _site/*.html
           cp .github/banner.png _site/banner.png
