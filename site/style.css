@@ -435,3 +435,19 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
 .pack-card.server .trailer { background: #141820; }
 .pack-tile.server { background: #1E2430; color: #E8F0FA; }
 .pack-tile.server span:last-child { color: #7AF09A; }
+
+/* ---------- Terms of use ---------- */
+.terms { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 1.8rem; max-width: 64rem; }
+.terms-toc { position: sticky; top: 90px; background: var(--paper); color: var(--ink); border: 3px solid var(--ink); box-shadow: 6px 6px 0 rgba(0,0,0,.35); padding: 16px 18px; }
+.terms-toc h2 { margin: 0 0 .5rem; font-size: 1.1rem; color: var(--ink); text-shadow: none; }
+.terms-toc ol { margin: 0; padding-left: 1.3rem; line-height: 1.7; }
+.terms-toc a { color: var(--ink); font-weight: 700; }
+.terms-body { background: var(--paper); color: var(--ink); border: 3px solid var(--ink); box-shadow: 6px 6px 0 rgba(0,0,0,.35); padding: 8px 28px 26px; }
+.terms-body section { padding-top: 1.2rem; scroll-margin-top: 90px; }
+.terms-body section + section { border-top: 2px dashed rgba(46,52,92,.2); margin-top: 1.2rem; }
+.terms-body h2 { margin: 0; color: var(--ink); text-shadow: none; font-size: 1.35rem; }
+.terms-body p, .terms-body li { max-width: 42rem; line-height: 1.6; }
+.terms-body p { margin: .7rem 0 0; }
+.terms-body ul { margin: .7rem 0 0; padding-left: 1.3rem; }
+.terms-body li + li { margin-top: .35rem; }
+@media (max-width: 760px) { .terms { grid-template-columns: 1fr; } .terms-toc { position: static; } .terms-body { padding: 4px 18px 22px; } }
