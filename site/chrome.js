@@ -54,7 +54,7 @@
   const pill = head && head.querySelector('.status-pill');
   const show = st => {
     if (!pill) return;
-    const bad = (st.services || []).filter(s => !s.ok).length;
+    const bad = (st.services || []).filter(s => !s.ok && !s.internal).length;   // internal checks are for the Admin Tool only
     pill.className = 'status-pill ' + (st.unreachable ? 'down' : bad ? 'down' : 'up');
     pill.querySelector('.status-pill-text').textContent = st.unreachable ? 'Status unknown' : bad ? 'Some issues' : 'All systems go';
   };
