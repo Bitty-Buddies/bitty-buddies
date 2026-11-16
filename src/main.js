@@ -35,7 +35,7 @@ const itemUnlocked = id => !!ITEMS[id] && packUnlocked(ITEMS[id].pack) && dayOpe
 const unlockedPackFiles = () => PACKS.filter(packUnlocked).map(p => p.file);
 
 // ---------- settings ----------
-const DEFAULTS = { things: [{ id: 'critters/pup' }, { id: 'critters/kit' }], scale: 4, hidden: false, mischief: true, shareStats: true, stats: {} };
+const DEFAULTS = { things: [{ id: 'critters/capri' }], scale: 4, hidden: false, mischief: true, shareStats: true, stats: {} };
 let settings = { ...DEFAULTS };
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 

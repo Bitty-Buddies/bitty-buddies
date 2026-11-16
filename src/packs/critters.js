@@ -146,6 +146,77 @@
         if (s.pose === 'walk' && s.frame) { P.r(5, 13, 2, 1, c.feet); P.r(10, 13, 2, 1, c.feet); }
         else { P.r(6, 13, 2, 1, c.feet); P.r(9, 13, 2, 1, c.feet); }
       }
+    },
+    capri: {
+      name: 'Capri', blurb: 'jagged low-poly net AI', move: 'hop', speed: 34,
+      draw(P, s) {
+        const c = {
+          pink: '#E65378',
+          pinkL: '#F585A2',
+          pinkD: '#B83456',
+          mint: '#7EF5B8',
+          mintD: '#4BC488',
+          black: '#1A181E',
+          shine: '#FFFFFF'
+        };
+        const low = s.pose === 'sit' || s.pose === 'sleep';
+        const bob = !low && s.frame === 1 ? -1 : 0;
+        const y0 = (low ? 3 : 1) + bob;
+
+        // Massive jagged pink low-poly hair (sweeping left/back + spiky crown)
+        P.r(4, y0 + 1, 7, 4, c.pink);
+        P.r(2, y0 + 2, 3, 3, c.pinkD);
+        P.p(3, y0 + 5, c.pinkD);
+        P.p(5, y0, c.pinkL); P.p(6, y0, c.pink);
+        P.p(8, y0, c.pinkL); P.p(10, y0 + 1, c.pinkL);
+        P.p(11, y0 + 2, c.pink); P.p(11, y0 + 4, c.pinkD);
+        P.p(4, y0 + 1, c.pinkL); P.p(7, y0 + 1, c.pinkL); // polygon facet highlights
+
+        // Mint face framed by sharp black hair/mask
+        P.r(6, y0 + 3, 4, 2, c.black);
+        P.r(7, y0 + 3, 3, 2, c.mint);
+        P.p(6, y0 + 4, c.mintD); // pointed ear/cheek
+        if (s.blink || s.pose === 'sleep') {
+          P.r(7, y0 + 4, 3, 1, c.black);
+        } else {
+          P.p(7, y0 + 3, c.black); P.p(9, y0 + 3, c.black);
+        }
+
+        // Asymmetrical low-poly torso (pink/black + mint shoulder)
+        P.r(6, y0 + 6, 4, 3, c.pink);
+        P.p(6, y0 + 6, c.mint);   // mint shoulder pad
+        P.p(8, y0 + 6, c.black);
+        P.p(7, y0 + 7, c.black);  // cinched geometric waist
+        P.p(9, y0 + 8, c.black);
+
+        // Arms (black right arm reaching forward, pink left arm)
+        if (low) {
+          P.r(5, y0 + 7, 1, 2, c.pinkD);
+          P.r(10, y0 + 7, 2, 1, c.black);
+        } else {
+          P.r(5, y0 + 6, 1, 3, c.pinkD);
+          P.r(10, y0 + 6, 2, 1, c.black);
+          P.p(12, y0 + 5 + s.frame, c.black);
+        }
+
+        // Asymmetrical legs (black/mint front leg + pink back leg)
+        if (low) {
+          P.r(5, 12, 3, 2, c.pinkD);
+          P.r(8, 12, 3, 2, c.black);
+          P.p(9, 12, c.mint);
+        } else {
+          const step = s.pose === 'walk' && s.frame === 1;
+          // Back pink leg with shard flare
+          P.r(step ? 6 : 5, y0 + 9, 2, 3, c.pink);
+          P.p(step ? 5 : 4, y0 + 10, c.pinkL);
+          P.p(step ? 6 : 5, y0 + 12, c.pinkD);
+          // Front black leg with mint shin armor
+          P.r(step ? 8 : 9, y0 + 9, 2, 3, c.black);
+          P.p(step ? 9 : 10, y0 + 10, c.mint);
+          P.p(step ? 9 : 10, y0 + 11, c.mintD);
+          P.p(step ? 8 : 9, y0 + 12, c.black);
+        }
+      }
     }
   }
 });
