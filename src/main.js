@@ -190,7 +190,7 @@ ipcMain.on('licence:close', () => { if (licenceWin) licenceWin.close(); });
 
 // ---------- report a problem ----------
 const REPORT_URL = (pkg.bitty && pkg.bitty.reportUrl) || '';
-const STATUS_PAGE = 'https://bitty-buddies.github.io/bitty-buddies/status.html';
+const STATUS_PAGE = 'https://bitty-buddies.github.io/status.html';
 let reportWin = null;
 
 function openReportWindow() {
@@ -521,7 +521,7 @@ function createTray() {
 
 // ---------- auto-update (GitHub Releases) ----------
 const pub = (pkg.build && pkg.build.publish && pkg.build.publish[0]) || {};
-const RELEASES_URL = 'https://bitty-buddies.github.io/bitty-buddies/';   // the website's download button, not the GitHub page
+const RELEASES_URL = 'https://bitty-buddies.github.io/';   // the website's download button, not the GitHub page
 let manualCheck = false;
 let autoUpdater = null;
 let readyVersion = null;   // an update that has downloaded and is waiting for a restart
