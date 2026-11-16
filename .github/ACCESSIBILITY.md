@@ -4,8 +4,8 @@ We want Bitty Buddies to be fun for everyone.
 
 ## What we do
 
-- **Calm buddies:** buddies never cover what you're working on, clicks pass straight through them, and you can hide them all from the tray menu at any time.
-- **No sound by default:** the app is silent unless you turn sounds on.
+- **Out of your way:** clicks on empty parts of the screen pass straight through to your apps; only the buddies themselves react to the mouse. You can hide every buddy from the tray menu at any time.
+- **Silent:** the app makes no sounds.
 - **Keyboard and screen readers on the website:** pages use proper headings, labelled buttons and visible keyboard focus, and work with your browser's zoom.
 - **Reduced motion:** the website respects your system's "reduce motion" setting.
 
