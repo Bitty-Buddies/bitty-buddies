@@ -147,8 +147,8 @@
         else { P.r(6, 13, 2, 1, c.feet); P.r(9, 13, 2, 1, c.feet); }
       }
     },
-    capri: {
-      name: 'Capri', blurb: 'jagged low-poly net AI', move: 'hop', speed: 34,
+    capi: {
+      name: 'Capi', blurb: 'jagged low-poly net AI', move: 'hop', speed: 34,
       draw(P, s) {
         const c = {
           pink: '#E65378',
