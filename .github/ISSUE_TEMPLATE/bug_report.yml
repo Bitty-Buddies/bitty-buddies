@@ -1,0 +1,43 @@
+name: 🐛 Bug report
+description: Something in Bitty Buddies isn't working right.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping! The quickest way to report a bug is **Report a problem…** in the app's tray menu. If you'd rather use GitHub, fill this in. **Never post your licence key.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we make it happen?
+      placeholder: |
+        1. Spawn a Pup
+        2. Drag it onto a window
+        3. ...
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the tray menu.
+      placeholder: "1.1.8"
+    validations:
+      required: true
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows version
+      options: [Windows 11, Windows 10, Not sure]
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots or a short video help a lot.
