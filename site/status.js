@@ -2,7 +2,7 @@
 // directly about downloads and updates. Nothing is sent about the visitor.
 (() => {
   const SERVER = 'https://bitty-admin.reece-feetenby.workers.dev/status';
-  const RELEASES = 'https://api.github.com/repos/WiggleCodes/bitty-buddies/releases/latest';
+  const RELEASES = 'https://api.github.com/repos/Bitty-Buddies/bitty-buddies/releases/latest';
   const ROWS = [
     { id: 'website', name: 'Website', what: 'This site and the download page.' },
     { id: 'updates', name: 'Downloads and updates', what: 'The installer and the app’s automatic updates.' },

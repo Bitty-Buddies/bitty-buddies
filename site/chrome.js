@@ -3,7 +3,7 @@
 (() => {
   const DISCORD = 'https://discord.gg/aCHyjABJG7';
   const KOFI = 'https://ko-fi.com/bittybuddies';
-  const DOWNLOAD = 'https://github.com/WiggleCodes/bitty-buddies/releases/latest/download/Bitty-Buddies-Setup.exe';
+  const DOWNLOAD = 'https://github.com/Bitty-Buddies/bitty-buddies/releases/latest/download/Bitty-Buddies-Setup.exe';
   const STATUS_API = 'https://bitty-admin.reece-feetenby.workers.dev/status';
 
   const TABS = [

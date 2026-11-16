@@ -106,12 +106,12 @@ jobs:
           TAG: ${{ needs.tag.outputs.tag }}
         run: |
           if [ -z "$WEBHOOK" ]; then echo "No DISCORD_UPDATES_WEBHOOK secret; skipping"; exit 0; fi
-          URL="https://wigglecodes.github.io/bitty-buddies/"
+          URL="https://bitty-buddies.github.io/bitty-buddies/"
           NOTES="Your app will update itself next time it checks. New here? Grab it from the link above."
           if [ -f "release-notes/$TAG.md" ]; then NOTES="$(tail -n +2 "release-notes/$TAG.md" | head -c 3800)"; fi
           jq -n --arg tag "$TAG" --arg url "$URL" --arg notes "$NOTES" '{
             username: "Bitty Buddies",
-            avatar_url: "https://wigglecodes.github.io/bitty-buddies/icon.png",
+            avatar_url: "https://bitty-buddies.github.io/bitty-buddies/icon.png",
             embeds: [{
               title: ("🆕 Bitty Buddies " + $tag + " is out!"),
               url: $url,

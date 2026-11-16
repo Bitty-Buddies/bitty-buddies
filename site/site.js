@@ -373,7 +373,7 @@
 // Download buttons start the installer straight away instead of opening a release page.
 (async () => {
   try {
-    const r = await fetch('https://api.github.com/repos/WiggleCodes/bitty-buddies/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
+    const r = await fetch('https://api.github.com/repos/Bitty-Buddies/bitty-buddies/releases/latest', { headers: { Accept: 'application/vnd.github+json' } });
     if (!r.ok) return;
     const exe = (await r.json()).assets.find(a => /^Bitty-Buddies-Setup.*\.exe$/.test(a.name));
     if (exe) document.querySelectorAll('[data-download]').forEach(a => { a.href = exe.browser_download_url; });
