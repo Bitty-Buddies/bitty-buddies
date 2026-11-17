@@ -3,8 +3,8 @@
 // installed. The tray menu's "Count me in the user stats" turns it off.
 const pkg = require('../package.json');
 
-const BASE = (pkg.bitty && pkg.bitty.statsApi) || 'https://abacus.jasoncameron.dev';
-const NS = (pkg.bitty && pkg.bitty.statsNamespace) || 'bitty-buddies';
+// The Bitty Buddies server on Cloudflare keeps the totals (no IDs, just numbers).
+const URL_ = (pkg.bitty && pkg.bitty.statsUrl) || 'https://bitty-admin.reece-feetenby.workers.dev/stats';
 
 const pad = n => String(n).padStart(2, '0');
 function isoWeek(d) {
@@ -24,8 +24,11 @@ function periods(d = new Date()) {
   };
 }
 
-async function hit(key) {
-  const res = await fetch(`${BASE}/hit/${NS}/${key}`, { signal: AbortSignal.timeout(10000) });
+async function hit(keys) {
+  const res = await fetch(URL_, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ keys }), signal: AbortSignal.timeout(10000)
+  });
   if (!res.ok) throw new Error(`stats ${res.status}`);
 }
 
@@ -42,11 +45,10 @@ async function checkIn(state, { version, licensed }) {
   if (licensed && state.licensedMonth !== now.month) todo.push(['licensedMonth', now.month, `p${now.month}`]);
   if (state.version !== version) todo.push(['version', version, `v-${version}`]);
 
-  let changed = false;
-  for (const [field, value, key] of todo) {
-    try { await hit(key); state[field] = value; changed = true; } catch { /* offline: try again later */ }
-  }
-  return changed;
+  if (!todo.length) return false;
+  try { await hit(todo.map(t => t[2])); } catch { return false; /* offline: try again later */ }
+  for (const [field, value] of todo) state[field] = value;
+  return true;
 }
 
 module.exports = { checkIn, periods };
