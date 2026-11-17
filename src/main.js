@@ -597,6 +597,25 @@ function statsCheckIn() {
 }
 
 // ---------- lifecycle ----------
+// Security: every window only shows our own pages. Links to websites open in the real browser,
+// nothing can navigate a window somewhere unexpected, and no page gets camera, mic or other permissions.
+const NAV_OK = url => {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'file:') return true;
+    if (u.protocol !== 'https:') return false;
+    return (ACCOUNT_API && u.origin === ACCOUNT_API) || u.hostname === 'discord.com';   // sign-in window only
+  } catch { return false; }
+};
+app.on('web-contents-created', (_e, wc) => {
+  wc.on('will-navigate', (ev, url) => { if (!NAV_OK(url)) ev.preventDefault(); });
+  wc.on('will-redirect', (ev, url) => { if (!NAV_OK(url)) ev.preventDefault(); });
+  wc.on('will-attach-webview', ev => ev.preventDefault());
+  wc.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  wc.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
+  wc.session.setPermissionCheckHandler(() => false);
+});
+
 app.whenReady().then(() => {
   if (IS_MAC && app.dock) app.dock.hide();
   loadSettings();
