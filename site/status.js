@@ -16,10 +16,12 @@
   for (const r of ROWS) {
     const li = document.createElement('li');
     li.className = 'svc checking';
+    const leds = (n, cls) => Array.from({ length: n }, () => `<span class="led blink ${cls}"></span>`).join('');
     li.innerHTML = '<span class="ear" aria-hidden="true"></span>'
-      + '<span class="leds" aria-hidden="true"><span class="lamp"></span><span class="led-act"></span></span>'
+      + '<span class="power" aria-hidden="true"><span class="lamp"></span></span>'
       + '<span class="tape"><span class="svc-name"></span><span class="svc-what"></span></span>'
-      + '<span class="bays" aria-hidden="true"><i></i><i></i><i></i><i></i></span>'
+      + `<span class="ports" aria-hidden="true">${leds(12, 'g')}</span>`
+      + `<span class="bays" aria-hidden="true">${Array.from({ length: 4 }, () => `<i><span class="led blink a"></span></i>`).join('')}</span>`
       + '<span class="svc-state">Checking…</span>'
       + '<span class="ear" aria-hidden="true"></span>';
     li.querySelector('.svc-name').textContent = r.name;
@@ -30,7 +32,6 @@
   const set = (id, ok) => {
     const li = items[id];
     li.className = 'svc ' + (ok === null ? 'unknown' : ok ? 'up' : 'down');
-    li.querySelector('.leds').className = 'leds ' + (ok === null ? 'unknown' : ok ? 'up' : 'down');
     li.querySelector('.svc-state').textContent = ok === null ? 'Can’t check' : ok ? 'Working' : 'Having problems';
   };
   const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
@@ -55,10 +56,44 @@
     const down = states.filter(c => c.includes('down')).length;
     const banner = $('banner');
     banner.className = 'status-banner ' + (down ? 'down' : 'up');
-    banner.querySelector('.console-leds').className = 'console-leds ' + (down ? 'down' : 'up');
     $('banner-text').textContent = down === 0 ? 'Everything is working.' : down === 1 ? 'One service is having problems.' : `${down} services are having problems.`;
     $('checked').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    $('online').textContent = `${states.length - down}/${states.length}`;
+    $('rack').classList.toggle('alarm', down > 0);
+    next = 60;
   }
+
+  // ---------- the blinky bits (decoration only) ----------
+  let next = 60;
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const patch = $('patch'), graph = $('graph'), ups = $('ups');
+  const CABLES = ['b', 'y', 'g', '', 'b', 'p', '', 'y', 'g', '', 'p', 'b', 'y', '', 'g', 'p', 'b', '', 'y', 'g', '', 'p', 'b', 'y'];
+  patch.innerHTML = CABLES.map(c => `<span class="port ${c ? 'cable ' + c : ''}"><span class="led ${c ? 'blink g' : ''}"></span></span>`).join('');
+  graph.innerHTML = '<i></i>'.repeat(18);
+  ups.innerHTML = '<i></i>'.repeat(10);
+  const bars = [...graph.children];
+  let level = 50;
+  const temp = $('temp');
+  setInterval(() => { if (next > 0) next--; $('next').textContent = String(next).padStart(2, '0'); }, 1000);
+  if (!calm) {
+    // network and disk lights flicker at random, like real traffic
+    setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      for (const led of document.querySelectorAll('.led.blink')) if (Math.random() < 0.18) led.classList.toggle('on');
+    }, 90);
+    // the console's traffic graph scrolls along
+    setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      level = Math.max(8, Math.min(100, level + (Math.random() - 0.5) * 40));
+      for (let i = 0; i < bars.length - 1; i++) bars[i].style.height = bars[i + 1].style.height;
+      bars[bars.length - 1].style.height = level + '%';
+      temp.textContent = (21 + Math.random() * 0.9).toFixed(1);
+    }, 260);
+  } else {
+    document.querySelectorAll('.led.blink').forEach((l, i) => l.classList.toggle('on', i % 3 !== 0));
+    bars.forEach((b, i) => { b.style.height = 30 + ((i * 37) % 60) + '%'; });
+  }
+  [...ups.children].forEach((c, i) => c.classList.toggle('on', i < 6));
   run();
   setInterval(() => { if (document.visibilityState === 'visible') run(); }, 60000);
 })();

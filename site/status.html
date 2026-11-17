@@ -22,17 +22,32 @@
     <section class="layer stone-layer">
       <div class="wrap">
         <h1 class="page-title">Service status</h1>
-        <div class="rack">
-          <div class="rack-top" aria-hidden="true"><span>BITTY-RACK-01</span><span class="rack-vent"></span></div>
+        <div class="rack" id="rack">
+          <div class="rack-top" aria-hidden="true">
+            <span class="beacon"></span><span class="rack-name">BITTY-RACK-01</span>
+            <span class="rack-vent"></span>
+            <span class="rack-temp"><span id="temp">21.4</span>°C</span>
+          </div>
           <div class="rack-bay">
-            <div class="status-banner checking" id="banner" role="status" aria-live="polite">
-              <span class="console-leds" aria-hidden="true"><span class="lamp"></span><span class="led-act"></span></span>
-              <span class="console-screen"><span class="console-prompt" aria-hidden="true">&gt;</span> <span id="banner-text">Checking everything…</span><span class="cursor" aria-hidden="true"></span></span>
+            <div class="console">
+              <span class="fans" aria-hidden="true"><span class="fan"><i></i></span><span class="fan"><i></i></span></span>
+              <div class="status-banner checking" id="banner" role="status" aria-live="polite">
+                <span class="console-screen">
+                  <span class="console-line"><span class="console-prompt" aria-hidden="true">&gt;</span> <span id="banner-text">Checking everything…</span><span class="cursor" aria-hidden="true"></span></span>
+                  <span class="console-sub" aria-hidden="true"><span id="online">-/-</span> ONLINE · NEXT SCAN <span id="next">60</span>s</span>
+                </span>
+              </div>
+              <span class="graph" id="graph" aria-hidden="true"></span>
             </div>
             <ul class="status-list" id="list" aria-label="Services"></ul>
-            <div class="patch-panel" aria-hidden="true">
-              <span class="port c1"></span><span class="port c2"></span><span class="port c3"></span><span class="port"></span><span class="port c1"></span><span class="port"></span><span class="port c4"></span><span class="port c2"></span><span class="port"></span><span class="port c3"></span><span class="port"></span><span class="port c4"></span>
+            <div class="patch-panel" id="patch" aria-hidden="true"></div>
+            <div class="ups" aria-hidden="true">
+              <span class="ups-badge">BITTY UPS</span>
+              <span class="ups-meter"><span class="ups-label">LOAD</span><span class="ups-cells" id="ups"></span></span>
+              <span class="ups-leds"><span class="led blink g"></span><span class="led g on"></span><span class="led a"></span></span>
+              <span class="power-btn"></span>
             </div>
+            <span class="glass" aria-hidden="true"></span>
           </div>
           <div class="rack-feet" aria-hidden="true"><span></span><span></span></div>
         </div>
