@@ -84,11 +84,45 @@
         <nav class="foot-col" aria-label="Pages"><h2>Pages</h2>${TABS.map(tab).join('')}</nav>
         <nav class="foot-col" aria-label="Community"><h2>Community</h2>${ELSEWHERE.map(out).join('')}</nav>
         <div class="foot-legal">
-          <p>© 2026 WiggleCodes. All rights reserved. The code is public to read, not to copy or re-upload. <a href="terms.html">Terms of use</a></p>
+          <p>© 2026 WiggleCodes. All rights reserved. The code is public to read, not to copy or re-upload. <a href="terms.html">Terms of use</a> · <a href="terms.html#cookies">Cookies</a> · <button type="button" class="linkish" data-cookie-settings>Cookie settings</button></p>
           <p>Privacy: the app sends an anonymous "+1" once a day so we can count users. No name, ID or files are sent, and you can turn it off in the tray menu. If you use “Report a problem…”, we only get what you type and, if you leave it ticked, basic app details like the version and your Windows version. If you make an account, we store your username, a scrambled copy of your password, and your Discord name and picture if you link Discord. You can delete your account at any time.</p>
         </div>
       </div>`;
   };
   footer();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', footer);
+
+  // ---------- cookies and storage ----------
+  // The site has no tracking or advertising cookies. Browser storage is only used to keep you
+  // signed in (needed for accounts, so always allowed) and, if you say yes, to remember which
+  // advent doors you've opened. Your choice is saved so the notice doesn't keep coming back.
+  const CHOICE = 'bb-consent';
+  const read = () => { try { return localStorage.getItem(CHOICE); } catch { return null; } };
+  window.BB_EXTRAS_OK = () => read() === 'all';
+  function choose(value) {
+    try {
+      localStorage.setItem(CHOICE, value);
+      if (value !== 'all') Object.keys(localStorage).filter(k => k.startsWith('bb-advent-')).forEach(k => localStorage.removeItem(k));
+    } catch { /* storage is off, so nothing is saved anyway */ }
+    const bar = document.getElementById('cookie-bar');
+    if (bar) bar.remove();
+  }
+  function showNotice() {
+    if (document.getElementById('cookie-bar')) return;
+    const bar = document.createElement('section');
+    bar.id = 'cookie-bar';
+    bar.className = 'cookie-bar';
+    bar.setAttribute('aria-label', 'Cookies');
+    bar.innerHTML = `
+      <p><strong>Cookies on Bitty Buddies.</strong> We don't use tracking or advertising cookies. We only save what keeps you signed in, and, if you're happy, which advent doors you've opened. <a href="terms.html#cookies">What we save</a></p>
+      <div class="cookie-actions">
+        <button type="button" class="btn grass" data-choice="all">Accept</button>
+        <button type="button" class="btn stone" data-choice="essential">Essential only</button>
+      </div>`;
+    bar.addEventListener('click', e => { const b = e.target.closest('[data-choice]'); if (b) choose(b.dataset.choice); });
+    document.body.appendChild(bar);
+  }
+  document.addEventListener('click', e => { if (e.target.closest('[data-cookie-settings]')) { document.getElementById('cookie-bar')?.remove(); showNotice(); document.querySelector('#cookie-bar button')?.focus(); } });
+  const start = () => { if (!read()) showNotice(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

@@ -493,3 +493,16 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
   .door.today .door-flap { animation: none; }
   .door.open:hover canvas { animation: none; }
 }
+
+/* ---------- cookie notice ---------- */
+.cookie-bar {
+  position: fixed; z-index: 50; left: 16px; right: 16px; bottom: 16px; margin: 0 auto; max-width: 46rem;
+  display: flex; gap: 14px 20px; align-items: center; flex-wrap: wrap;
+  padding: 16px 18px; background: var(--paper); color: var(--ink);
+  border: 3px solid var(--ink); box-shadow: var(--px) var(--px) 0 var(--ink);
+}
+.cookie-bar p { margin: 0; flex: 1 1 20rem; font-size: .98rem; line-height: 1.5; }
+.cookie-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.cookie-bar .btn { font-size: 1rem; padding: 10px 16px; cursor: pointer; }
+.linkish { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .cookie-bar .btn { transition: none; } }

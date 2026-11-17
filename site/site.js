@@ -123,7 +123,8 @@
       b.addEventListener('click', () => {
         if (state === 'today') {
           state = 'open'; b.classList.replace('today', 'open'); label();
-          try { localStorage.setItem(`bb-advent-${ADV.year}`, String(day)); } catch { /* fine */ }
+          // only remembered if cookies were accepted (see chrome.js)
+          if (window.BB_EXTRAS_OK && window.BB_EXTRAS_OK()) { try { localStorage.setItem(`bb-advent-${ADV.year}`, String(day)); } catch { /* fine */ } }
         }
         told(describe());
       });
