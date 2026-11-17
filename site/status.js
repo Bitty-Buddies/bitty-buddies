@@ -16,7 +16,12 @@
   for (const r of ROWS) {
     const li = document.createElement('li');
     li.className = 'svc checking';
-    li.innerHTML = '<span class="lamp" aria-hidden="true"></span><span class="svc-name"></span><span class="svc-what"></span><span class="svc-state">Checking…</span>';
+    li.innerHTML = '<span class="ear" aria-hidden="true"></span>'
+      + '<span class="leds" aria-hidden="true"><span class="lamp"></span><span class="led-act"></span></span>'
+      + '<span class="tape"><span class="svc-name"></span><span class="svc-what"></span></span>'
+      + '<span class="bays" aria-hidden="true"><i></i><i></i><i></i><i></i></span>'
+      + '<span class="svc-state">Checking…</span>'
+      + '<span class="ear" aria-hidden="true"></span>';
     li.querySelector('.svc-name').textContent = r.name;
     li.querySelector('.svc-what').textContent = r.what;
     list.appendChild(li);
@@ -25,6 +30,7 @@
   const set = (id, ok) => {
     const li = items[id];
     li.className = 'svc ' + (ok === null ? 'unknown' : ok ? 'up' : 'down');
+    li.querySelector('.leds').className = 'leds ' + (ok === null ? 'unknown' : ok ? 'up' : 'down');
     li.querySelector('.svc-state').textContent = ok === null ? 'Can’t check' : ok ? 'Working' : 'Having problems';
   };
   const timeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
@@ -49,6 +55,7 @@
     const down = states.filter(c => c.includes('down')).length;
     const banner = $('banner');
     banner.className = 'status-banner ' + (down ? 'down' : 'up');
+    banner.querySelector('.console-leds').className = 'console-leds ' + (down ? 'down' : 'up');
     $('banner-text').textContent = down === 0 ? 'Everything is working.' : down === 1 ? 'One service is having problems.' : `${down} services are having problems.`;
     $('checked').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }

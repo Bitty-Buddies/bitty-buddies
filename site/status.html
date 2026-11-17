@@ -22,11 +22,20 @@
     <section class="layer stone-layer">
       <div class="wrap">
         <h1 class="page-title">Service status</h1>
-        <div class="status-banner checking" id="banner" role="status" aria-live="polite">
-          <span class="lamp" aria-hidden="true"></span>
-          <span id="banner-text">Checking everything…</span>
+        <div class="rack">
+          <div class="rack-top" aria-hidden="true"><span>BITTY-RACK-01</span><span class="rack-vent"></span></div>
+          <div class="rack-bay">
+            <div class="status-banner checking" id="banner" role="status" aria-live="polite">
+              <span class="console-leds" aria-hidden="true"><span class="lamp"></span><span class="led-act"></span></span>
+              <span class="console-screen"><span class="console-prompt" aria-hidden="true">&gt;</span> <span id="banner-text">Checking everything…</span><span class="cursor" aria-hidden="true"></span></span>
+            </div>
+            <ul class="status-list" id="list" aria-label="Services"></ul>
+            <div class="patch-panel" aria-hidden="true">
+              <span class="port c1"></span><span class="port c2"></span><span class="port c3"></span><span class="port"></span><span class="port c1"></span><span class="port"></span><span class="port c4"></span><span class="port c2"></span><span class="port"></span><span class="port c3"></span><span class="port"></span><span class="port c4"></span>
+            </div>
+          </div>
+          <div class="rack-feet" aria-hidden="true"><span></span><span></span></div>
         </div>
-        <ul class="status-list" id="list" aria-label="Services"></ul>
         <p class="status-note">Checked <span id="checked">just now</span>. This page checks again every minute. Your buddies keep running on your desktop even if a service is down, because only downloads, updates, licence keys and reports need the internet.</p>
         <p class="status-note">Something broken that isn't shown here? Tell us in the <a href="https://discord.gg/aCHyjABJG7">Discord</a>, or use "Report a problem…" in the app's tray menu.</p>
       </div>
