@@ -1,0 +1,39 @@
+name: Discord news
+
+# Posts announcements to the Discord #updates channel. Add a file to news/ (first line "# Title",
+# then the message) and push it to main: each NEW file is posted once, through the same webhook
+# the releases use (repo secret DISCORD_UPDATES_WEBHOOK). Editing an old file doesn't repost it.
+on:
+  push:
+    branches: [main]
+    paths: ['news/**.md']
+
+permissions:
+  contents: read
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Post new announcements
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_UPDATES_WEBHOOK }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo "No DISCORD_UPDATES_WEBHOOK secret"; exit 1; fi
+          if git cat-file -e "$BEFORE" 2>/dev/null; then RANGE="$BEFORE..HEAD"; else RANGE="HEAD~1..HEAD"; fi
+          git diff --name-only --diff-filter=A "$RANGE" -- news/ | grep '\.md$' | sort | while read -r f; do
+            TITLE="$(head -n 1 "$f" | sed 's/^#\s*//')"
+            BODY="$(tail -n +2 "$f" | head -c 3900)"
+            jq -n --arg t "$TITLE" --arg b "$BODY" '{
+              username: "Bitty Buddies",
+              avatar_url: "https://bitty-buddies.github.io/icon.png",
+              embeds: [{ title: $t, url: "https://bitty-buddies.github.io/", description: $b, color: 7126606 }]
+            }' > msg.json
+            curl -fsS -H "Content-Type: application/json" -d @msg.json "$WEBHOOK"
+            echo "Posted $f"
+            sleep 2
+          done
