@@ -61,18 +61,12 @@
     hidden: true,   // private: doesn't appear in the menus at all until unlocked
     items: {
       red: {
-        name: 'Ginger', blurb: 'red sausage dog in a spotty harness', move: 'walk', speed: 32, w: 22, favourite: true,
+        name: 'Ginger', blurb: 'red-brown sausage dog', move: 'walk', speed: 32, w: 22, favourite: true,
         draw(P, s) {
           doxie(P, s, RED, (P, L) => {
-            const W = '#F4F2EE', K = '#1B1B1B';
-            if (L.mode === 'stand') {
-              P.r(13, 7, 2, 5, W); P.r(12, 8, 1, 1, W); P.r(4, 8, 9, 1, W);   // spotty harness round chest + along back
-              P.p(13, 8, K); P.p(14, 10, K); P.p(7, 8, K); P.p(10, 8, K);
-              P.p(15, 10, '#F2EDE6');                                         // little white chest patch
-            } else if (L.mode === 'sit') {
-              P.r(L.cx + 1, L.cy, 2, 5, W); P.p(L.cx + 1, L.cy + 1, K); P.p(L.cx + 2, L.cy + 3, K);
-              P.p(L.cx + 4, L.cy + 3, '#F2EDE6');
-            }
+            const W = '#F2EDE6';                                              // all brown, just a little white on his tummy
+            if (L.mode === 'stand') { P.r(9, 11, 4, 1, W); P.p(14, 11, W); }
+            else if (L.mode === 'sit') { P.r(L.cx + 2, L.cy + 4, 2, 2, W); }
           });
         }
       },
