@@ -149,11 +149,14 @@
   });
 
   // ---------- team avatars: a big pixel buddy ----------
-  document.querySelectorAll('[data-avatar]').forEach(box => {
+  const drawAvatar = box => {
+    if (box.querySelector('canvas')) return;
     const [pack, key] = box.dataset.avatar.split('/');
     const item = PACKS[pack] && PACKS[pack].items[key];
     if (item) box.appendChild(gridToCanvas(PX.drawItem(PX.withDefaults(item), { pose: 'idle', frame: 0, blink: false })));
-  });
+  };
+  document.querySelectorAll('[data-avatar]').forEach(drawAvatar);
+  window.BB_drawAvatar = drawAvatar;   // the team tree draws more of these later
 
   // ---------- the meadow ----------
   const canvas = document.getElementById('meadow');
