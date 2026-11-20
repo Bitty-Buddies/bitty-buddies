@@ -77,8 +77,8 @@
   }
 
   // States where a pet is doing its own thing and shouldn't be pulled into games.
-  const LOCKED = ['held', 'ride', 'leap', 'climb', 'cling', 'battle', 'fall', 'dizzy', 'cheer', 'eat', 'love', 'carried', 'goGrab', 'haul', 'goWin', 'winJump', 'tug', 'goFix', 'fix'];
-  const MOVERS = ['walk', 'chase', 'fetch', 'snack', 'conga', 'toWall', 'goGrab', 'haul', 'goWin', 'goFix'];
+  const LOCKED = ['held', 'ride', 'leap', 'climb', 'cling', 'battle', 'fall', 'dizzy', 'cheer', 'eat', 'love', 'carried', 'goGrab', 'haul', 'goWin', 'winJump', 'tug', 'goFix', 'fix', 'fly', 'cast'];
+  const MOVERS = ['walk', 'chase', 'fetch', 'snack', 'conga', 'toWall', 'goGrab', 'haul', 'goWin', 'goFix', 'fly'];
 
   // ---------- things (pets + builds) ----------
   class Thing {
@@ -139,6 +139,8 @@
       if (this.state === 'love') pose = 'sit';
       const own = this.def.poses || [];              // some pets have their own poses (Mitty's eat and love)
       if (own.includes(this.state)) pose = this.state;
+      if (this.state === 'fly' && own.includes('fly')) { pose = 'fly'; frame = this.frame; }
+      if (this.state === 'cast' && own.includes('cast')) { pose = 'cast'; frame = this.timer < 1.0 ? 1 : 0; }
       if (this.state === 'fix') pose = 'fix';
       if (this.state === 'dizzy') blink = true;
       if (this.def.move === 'hop' && this.moving()) frame = Math.abs(Math.sin(this.hop * Math.PI)) < 0.25 ? 1 : 0;
@@ -174,6 +176,9 @@
         const broken = things.find(k => k.power === 'fault' && (!k.fixer || !things.includes(k.fixer) || k.fixer.job !== k));
         if (broken) { this.set('goFix', 25); this.job = broken; broken.fixer = this; this.say('!', 1.2); return; }
       }
+
+      if (this.def.flies && Math.random() < 0.18) return startFly(this);        // the witch takes to the sky
+      if (this.def.caster && Math.random() < 0.16) return this.set('cast', 1.8); // the wizard casts a spell
 
       const r = Math.random();
       if (this.nearBuild() && r < 0.5) return this.set(Math.random() < 0.5 ? 'sit' : 'sleep', rand(6, 14));
@@ -309,6 +314,37 @@
             else this.next();
           }
         }
+        return;
+      }
+
+      if (S === 'fly') {
+        this.timer -= dt;
+        const air = this.timer > 0;
+        if (air) {
+          this.x += this.dir * this.runSpeed() * 0.75 * dt;
+          if (this.x <= 0 || this.x >= maxX) { this.x = clamp(this.x, 0, maxX); this.dir = -this.dir; }
+          if (Math.random() < dt * 0.6) this.flyY = ground - rand(50, Math.min(260, ground * 0.5));   // swoop up or down now and then
+          const want = this.flyY + Math.sin(clock * 2.4 + this.uid) * 6 * scale;
+          this.y += (want - this.y) * Math.min(1, dt * 1.6);
+          if (Math.random() < dt * 14) puff('spark', this.x + (this.dir > 0 ? 0 : this.wpx()), this.y - 3 * scale, { vy: rand(-10, 30), vx: -this.dir * rand(20, 60), life: rand(0.4, 0.8), col: pick(['#B67CF0', '#FFD84A', '#E7D6FF']) });
+        } else {                                                  // glide down to land
+          this.x += this.dir * this.runSpeed() * 0.5 * dt;
+          this.x = clamp(this.x, 0, maxX);
+          this.y = Math.min(ground, this.y + 140 * (scale / 4) * dt);
+          if (this.y >= ground) { this.y = ground; dust(this.x + this.wpx() / 2, ground, 4); this.next(); }
+        }
+        return;
+      }
+
+      if (S === 'cast') {
+        if (!this.aimed) {                                          // turn to face the nearest buddy first
+          this.aimed = true;
+          const near = pets(false).filter(p => p !== this).sort((a, b) => Math.abs(a.x - this.x) - Math.abs(b.x - this.x))[0];
+          if (near) this.dir = Math.sign(near.x - this.x) || this.dir;
+        }
+        this.timer -= dt;
+        if (!this.casted && this.timer < 1.0) { this.casted = true; castOrb(this); }
+        if (this.timer <= 0) { this.casted = false; this.aimed = false; this.next(); }
         return;
       }
 
@@ -978,6 +1014,7 @@
     for (const t of list) if (t.state === 'ride') drawThing(t);
 
     drawRockets();
+    drawOrbs();
     drawFlakes();
 
     const px = Math.max(2, Math.round(scale / 2));
@@ -1203,10 +1240,64 @@
       startBattle(t, other);
     } else if (action === 'chase') { t.say('!'); t.set('chase', rand(8, 12)); }
     else if (action === 'climb') { t.dir = t.x < W() / 2 ? -1 : 1; t.set('toWall', 15); }
+    else if (action === 'fly') startFly(t);
+    else if (action === 'cast') t.set('cast', 1.8);
     else if (action === 'hat-santa' || action === 'hat-off') { t.hat = action === 'hat-off' ? null : 'santa'; if (t.hat) heart(t); report(); }
     else if (action === 'grab') { if (!startGrab(t)) t.say('?', 1.2); }
     else t.set(action, action === 'sleep' ? rand(10, 20) : action === 'sit' ? rand(6, 12) : rand(4, 8));
   });
+
+  // ---------- magic: the witch flies on her broom, the wizard casts magic balls ----------
+  function startFly(t) {
+    t.set('fly', rand(7, 14));
+    t.flyY = H() - rand(60, Math.min(240, H() * 0.45));
+    t.dir = t.x < W() / 2 ? 1 : -1;
+    t.say('♪', 1.2);
+  }
+  const orbs = [];
+  function castOrb(t) {
+    const x = t.x + (t.dir > 0 ? t.wpx() - 3 * scale : 3 * scale), y = t.top() + 2 * scale;
+    // aim at the nearest buddy in front, if there is one
+    const ahead = pets(false).filter(p => p !== t && Math.sign(p.x - t.x) === t.dir && Math.abs(p.x - t.x) < 520)
+      .sort((a, b) => Math.abs(a.x - t.x) - Math.abs(b.x - t.x))[0];
+    orbs.push({ x, y, vx: t.dir * 320 * (scale / 4), vy: 0, life: 2.2, t: 0, target: ahead || null, col: pick(['#7FE8FF', '#B67CF0', '#FF7AD9', '#9BFF8A']) });
+    for (let k = 0; k < 6; k++) puff('spark', x, y, { vx: rand(-80, 80), vy: rand(-80, 40), life: 0.5, col: '#FFFFFF' });
+  }
+  function updateOrbs(dt) {
+    for (let i = orbs.length - 1; i >= 0; i--) {
+      const o = orbs[i];
+      o.t += dt;
+      if (o.target && things.includes(o.target)) {               // curve gently towards the target
+        const tx = o.target.x + o.target.wpx() / 2, ty = o.target.top() + o.target.hpx() * 0.4;
+        o.vy += clamp((ty - o.y) * 4, -600, 600) * dt;
+        if (Math.hypot(tx - o.x, ty - o.y) < 6 * scale) {
+          burstOrb(o);
+          const p = o.target;
+          if (!['held', 'carried', 'ride', 'climb', 'cling', 'fly'].includes(p.state)) {   // a harmless magic boing!
+            p.say('!', 1.2); p.vy = -520; p.vx = rand(-80, 80); p.state = 'fall';
+          }
+          orbs.splice(i, 1); continue;
+        }
+      }
+      o.x += o.vx * dt; o.y += o.vy * dt;
+      if (Math.random() < 0.8) puff('spark', o.x, o.y, { vx: rand(-20, 20), vy: rand(-20, 20), life: 0.45, col: o.col });
+      if (o.t > o.life || o.x < -20 || o.x > W() + 20) { burstOrb(o); orbs.splice(i, 1); }
+    }
+  }
+  function burstOrb(o) {
+    for (let k = 0; k < 18; k++) {
+      const a = (k / 18) * Math.PI * 2;
+      puff('spark', o.x, o.y, { vx: Math.cos(a) * rand(80, 160), vy: Math.sin(a) * rand(80, 160), g: 200, life: rand(0.5, 0.9), col: Math.random() < 0.3 ? '#FFFFFF' : o.col });
+    }
+  }
+  function drawOrbs() {
+    for (const o of orbs) {
+      const r = 3 * scale * (1 + 0.15 * Math.sin(o.t * 20));
+      const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, r * 2);
+      g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(0.35, o.col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(o.x - r * 2, o.y - r * 2, r * 4, r * 4);
+    }
+  }
 
   // ---------- seasons: snow, hats and New Year fireworks ----------
   // Snow falls gently, piles up in a drift along the bottom of the screen and settles on top of builds.
@@ -1398,6 +1489,7 @@
     updateTreats(dt);
     updateSnow(dt);
     updateFireworks(dt);
+    updateOrbs(dt);
     socialise();
 
     // Hover over a pet for a moment to give it a pat.

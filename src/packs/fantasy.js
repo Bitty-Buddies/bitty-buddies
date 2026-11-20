@@ -38,18 +38,26 @@
     licensed: true, // needs a licence key that covers 'fantasy'
     items: {
       wizard: {
-        name: 'Wizard', blurb: 'starry-robed spell slinger', move: 'walk', speed: 26,
+        name: 'Wizard', blurb: 'starry-robed spell slinger who casts magic balls', move: 'walk', speed: 26,
+        caster: true, poses: ['cast'],
         draw(P, s) {
           const c = { robe: '#5B3FA8', shade: '#43307E', star: '#FFE066', skin: '#F0C8A0', skinS: '#C99C74', hair: '#E8E8E8', wood: '#7A4E2A', orb1: '#7FE8FF', orb2: '#C9F7FF' };
-          const L = humanoid(P, s, { skin: c.skin, skinShade: c.skinS, hair: c.hair, top: c.robe, topShade: c.shade, legs: c.robe, boots: '#4A3020' });
+          const casting = s.pose === 'cast';
+          const L = humanoid(P, casting ? { ...s, pose: 'idle' } : s, { skin: c.skin, skinShade: c.skinS, hair: c.hair, top: c.robe, topShade: c.shade, legs: c.robe, boots: '#4A3020' });
           P.r(5, L.hy, 7, 1, c.robe);                       // hat brim
           P.r(6, L.hy - 1, 4, 1, c.robe); P.r(6, L.hy - 2, 2, 1, c.shade); P.p(5, L.hy - 2, c.shade);
           P.p(8, L.hy - 1, c.star);
           P.r(8, L.hy + 4, 3, 2, c.hair); P.p(9, L.hy + 6, c.hair); // beard
           P.p(L.bx + 2, L.by + 2, c.star); P.p(L.bx + 4, L.by + 1, c.star);
-          P.r(11, L.hy + 1, 1, 13 - L.hy, c.wood);           // staff
-          P.p(11, L.hy, s.frame ? c.orb2 : c.orb1);
-          P.p(12, L.hy, c.orb1); P.p(11, L.hy - 1, s.frame ? c.orb1 : c.orb2);
+          if (casting) {                                    // staff raised high, orb blazing
+            P.r(12, L.hy, 1, 14 - L.hy, c.wood); P.p(11, L.by, c.skin);
+            P.r(11, L.hy - 2, 3, 2, c.orb1); P.p(12, L.hy - 2, c.orb2); P.p(12, L.hy - 1, c.orb2);
+            if (s.frame) { P.p(10, L.hy - 2, c.star); P.p(14, L.hy - 1, c.star); P.p(15, L.hy + 1, c.orb2); P.p(10, L.hy + 1, c.orb2); }
+          } else {
+            P.r(11, L.hy + 1, 1, 13 - L.hy, c.wood);           // staff
+            P.p(11, L.hy, s.frame ? c.orb2 : c.orb1);
+            P.p(12, L.hy, c.orb1); P.p(11, L.hy - 1, s.frame ? c.orb1 : c.orb2);
+          }
         }
       },
 
@@ -96,14 +104,23 @@
 
       // ---------- more folk, added in 1.1.9 ----------
       witch: {
-        name: 'Witch', blurb: 'kindly witch with her trusty broom', move: 'walk', speed: 28,
+        name: 'Witch', blurb: 'kindly witch who flies about on her broom', move: 'walk', speed: 28,
+        flies: true, poses: ['fly'],
         draw(P, s) {
-          const c = { robe: '#3A3A4E', robeS: '#2A2A38', hat: '#2A2A38', band: '#9B6BD6', skin: '#BFE0A8', skinS: '#94B87E', hair: '#E2723A', wood: '#7A4E2A', straw: '#E2C25A' };
-          const L = humanoid(P, s, { skin: c.skin, skinShade: c.skinS, hair: c.hair, top: c.robe, topShade: c.robeS, legs: c.robe, boots: '#1E1E28' });
+          const c = { robe: '#3A3A4E', robeS: '#2A2A38', hat: '#2A2A38', band: '#9B6BD6', skin: '#BFE0A8', skinS: '#94B87E', hair: '#E2723A', wood: '#7A4E2A', straw: '#E2C25A', strawS: '#C8A040' };
+          const flying = s.pose === 'fly';
+          const L = humanoid(P, flying ? { ...s, pose: 'sit' } : s, { skin: c.skin, skinShade: c.skinS, hair: c.hair, top: c.robe, topShade: c.robeS, legs: c.robe, boots: '#1E1E28' });
           P.r(5, L.hy, 7, 1, c.hat); P.r(6, L.hy - 1, 4, 1, c.hat); P.r(6, L.hy - 2, 3, 1, c.hat); P.p(5, L.hy - 3, c.hat);   // pointy hat, tip bent back
           P.r(6, L.hy - 1, 4, 1, c.band);
           P.p(6, L.hy + 4, c.hair); P.p(6, L.hy + 5, c.hair);
-          P.r(4, L.by - 2, 1, 8, c.wood); P.r(3, L.by + 5, 3, 2, c.straw);               // broom on her back
+          if (flying) {                                                                  // riding her broom
+            P.r(2, 13, 14, 1, c.wood); P.p(15, 12, c.wood);
+            P.r(0, 12, 3, 3, c.straw); P.p(0, 12, c.strawS); P.p(1, 14, c.strawS);
+            P.p(4 + (s.frame ? 1 : 0), 6, c.robeS); P.p(3 + (s.frame ? 0 : 1), 7, c.robeS);   // robe fluttering in the wind
+            P.p(4, L.hy + 5 + (s.frame ? 1 : 0), c.hair);                                 // hair streaming back
+          } else {
+            P.r(4, L.by - 2, 1, 8, c.wood); P.r(3, L.by + 5, 3, 2, c.straw);             // broom on her back
+          }
         }
       },
 

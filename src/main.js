@@ -21,7 +21,7 @@ const PACKS = PACK_FILES.map(file => ({ file, ...require(path.join(__dirname, 'p
 const ITEMS = {};
 for (const p of PACKS) {
   for (const [key, it] of Object.entries(p.items)) {
-    ITEMS[`${p.id}/${key}`] = { id: `${p.id}/${key}`, pack: p, name: it.name, blurb: it.blurb || '', kind: it.kind || 'pet', day: it.day || 0 };
+    ITEMS[`${p.id}/${key}`] = { id: `${p.id}/${key}`, pack: p, name: it.name, blurb: it.blurb || '', kind: it.kind || 'pet', day: it.day || 0, flies: !!it.flies, caster: !!it.caster };
   }
 }
 
@@ -378,6 +378,8 @@ ipcMain.on('thing-menu', (_e, { uid, id }) => {
     tpl.push({ label: 'Climb the wall', click: () => send('thing-action', { uid, action: 'climb' }) });
     tpl.push({ label: 'Pick something up', click: () => send('thing-action', { uid, action: 'grab' }) });
     tpl.push({ label: 'Start a battle!', click: () => send('thing-action', { uid, action: 'battle' }) });
+    if (item.flies) tpl.push({ label: '🧹 Fly around', click: () => send('thing-action', { uid, action: 'fly' }) });
+    if (item.caster) tpl.push({ label: '✨ Cast a spell', click: () => send('thing-action', { uid, action: 'cast' }) });
     tpl.push({ type: 'separator' });
     tpl.push({ label: '🎅 Put on a Santa hat', click: () => send('thing-action', { uid, action: 'hat-santa' }) });
     tpl.push({ label: 'Take hat off', click: () => send('thing-action', { uid, action: 'hat-off' }) });
