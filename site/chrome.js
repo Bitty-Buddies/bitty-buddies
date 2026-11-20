@@ -84,7 +84,7 @@
         <nav class="foot-col" aria-label="Pages"><h2>Pages</h2>${TABS.map(tab).join('')}</nav>
         <nav class="foot-col" aria-label="Community"><h2>Community</h2>${ELSEWHERE.map(out).join('')}</nav>
         <div class="foot-legal">
-          <p>© 2026 WiggleCodes. All rights reserved. The code is public to read, not to copy or re-upload. <a href="terms.html">Terms of use</a> · <a href="terms.html#cookies">Cookies</a> · <button type="button" class="linkish" data-cookie-settings>Cookie settings</button></p>
+          <p>© 2026 Bitty Buddies. All rights reserved. The code is public to read, not to copy or re-upload. <a href="terms.html">Terms of use</a> · <a href="terms.html#cookies">Cookies</a> · <button type="button" class="linkish" data-cookie-settings>Cookie settings</button></p>
           <p>Privacy: the app sends an anonymous "+1" once a day so we can count users. No name, ID or files are sent, and you can turn it off in the tray menu. If you use “Report a problem…”, we only get what you type and, if you leave it ticked, basic app details like the version and your Windows version. If you make an account, we store your username, a scrambled copy of your password, and your Discord name and picture if you link Discord. You can delete your account at any time.</p>
         </div>
       </div>`;
