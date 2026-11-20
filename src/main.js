@@ -35,7 +35,14 @@ const itemUnlocked = id => !!ITEMS[id] && packUnlocked(ITEMS[id].pack) && dayOpe
 const unlockedPackFiles = () => PACKS.filter(packUnlocked).map(p => p.file);
 
 // ---------- settings ----------
-const DEFAULTS = { things: [{ id: 'critters/pup' }, { id: 'critters/kit' }], scale: 4, hidden: false, mischief: true, shareStats: true, stats: {} };
+const DEFAULTS = { things: [{ id: 'critters/pup' }, { id: 'critters/kit' }], scale: 4, hidden: false, mischief: true, shareStats: true, stats: {}, snow: 'auto' };
+
+// ---------- seasons ----------
+// Snow: 'auto' snows from 1 December to 6 January, or 'on' / 'off' all year.
+const inSnowSeason = (d = new Date()) => d.getMonth() === 11 || (d.getMonth() === 0 && d.getDate() <= 6);
+const snowOn = () => settings.snow === 'on' || (settings.snow !== 'off' && inSnowSeason());
+// The fireworks menu item shows from midday on New Year's Eve to the end of New Year's Day.
+const newYearTime = (d = new Date()) => (d.getMonth() === 11 && d.getDate() === 31 && d.getHours() >= 12) || (d.getMonth() === 0 && d.getDate() === 1);
 let settings = { ...DEFAULTS };
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 
@@ -95,6 +102,7 @@ function createWindow() {
       scale: settings.scale,
       hidden: settings.hidden,
       mischief: settings.mischief,
+      snow: snowOn(),
       windowGrab: windows.supported()
     });
     win.showInactive();
@@ -142,7 +150,8 @@ ipcMain.on('things-changed', (_e, things) => {
   const locked = settings.things.filter(t => ITEMS[t.id] && !itemUnlocked(t.id));
   const shown = things
     .filter(t => t && itemUnlocked(t.id))
-    .map(t => (typeof t.x === 'number' ? { id: t.id, x: Math.max(0, Math.min(1, t.x)) } : { id: t.id }));
+    .map(t => (typeof t.x === 'number' ? { id: t.id, x: Math.max(0, Math.min(1, t.x)) }
+      : (t.hat === 'santa' ? { id: t.id, hat: t.hat } : { id: t.id })));
   settings.things = [...shown, ...locked].slice(0, MAX_THINGS);
   saveSettings();
 });
@@ -370,6 +379,9 @@ ipcMain.on('thing-menu', (_e, { uid, id }) => {
     tpl.push({ label: 'Pick something up', click: () => send('thing-action', { uid, action: 'grab' }) });
     tpl.push({ label: 'Start a battle!', click: () => send('thing-action', { uid, action: 'battle' }) });
     tpl.push({ type: 'separator' });
+    tpl.push({ label: '🎅 Put on a Santa hat', click: () => send('thing-action', { uid, action: 'hat-santa' }) });
+    tpl.push({ label: 'Take hat off', click: () => send('thing-action', { uid, action: 'hat-off' }) });
+    tpl.push({ type: 'separator' });
   }
   tpl.push({ label: `Remove ${item.name}`, click: () => send('thing-action', { uid, action: 'remove' }) });
   Menu.buildFromTemplate(tpl).popup({ window: win });
@@ -455,6 +467,7 @@ function buildTrayMenu() {
           ]
         }] : []),
         { label: 'Dance party!', click: () => send('play', 'party') },
+        ...(newYearTime() ? [{ label: '🎆 Fireworks!', click: () => send('play', 'fireworks') }] : []),
         { label: 'Conga line!', click: () => send('play', 'conga') },
         { label: 'Move things around!', click: () => send('play', 'tidy') },
         ...(windows.supported() ? [{ label: 'Grab a window!', click: () => send('play', 'window') }] : []),
@@ -464,6 +477,22 @@ function buildTrayMenu() {
           click: i => { settings.mischief = i.checked; saveSettings(); send('set-mischief', settings.mischief); }
         }
       ]
+    },
+    {
+      label: 'Hats and outfits', submenu: [
+        { label: '🎅 Santa hats for everyone', click: () => send('set-hats', 'santa') },
+        { label: 'Take all hats off', click: () => send('set-hats', null) },
+        { type: 'separator' },
+        { label: 'Tip: right-click a pet to dress just that one', enabled: false }
+      ]
+    },
+    {
+      label: 'Snow', submenu: [
+        ['Auto (December to 6 January)', 'auto'], ['Always', 'on'], ['Off', 'off']
+      ].map(([label, v]) => ({
+        label, type: 'radio', checked: (settings.snow || 'auto') === v,
+        click: () => { settings.snow = v; saveSettings(); send('set-snow', snowOn()); }
+      }))
     },
     {
       label: 'Clear', submenu: [
@@ -632,6 +661,20 @@ app.whenReady().then(() => {
 
   // Advent calendar doors: check now, every few minutes (so a door opens just after midnight) and after sleep.
   setTimeout(checkAdvent, 6000);
+  // Seasons: switch snow on or off as the dates change, and set off fireworks at midnight on New Year.
+  let lastSnow = null, lastNewYear = newYearTime();
+  setInterval(() => {
+    const now = new Date();
+    const snow = snowOn();
+    if (snow !== lastSnow) { lastSnow = snow; send('set-snow', snow); }
+    const ny = newYearTime(now);
+    if (ny !== lastNewYear) { lastNewYear = ny; buildTrayMenu(); }
+    if (now.getMonth() === 0 && now.getDate() === 1 && now.getHours() === 0 && now.getMinutes() < 15 && settings.fireworksYear !== now.getFullYear()) {
+      settings.fireworksYear = now.getFullYear();
+      saveSettings();
+      send('play', 'fireworks');
+    }
+  }, 10 * 1000);
   setInterval(checkAdvent, 5 * 60 * 1000);
   powerMonitor.on('resume', () => setTimeout(checkAdvent, 10000));
 

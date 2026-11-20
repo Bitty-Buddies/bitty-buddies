@@ -86,6 +86,7 @@
       this.uid = uidSeq++;
       this.id = id;
       this.def = REG[id];
+      this.hat = opts.hat && OUTFITS[opts.hat] ? opts.hat : null;
       this.isBuild = this.def.kind === 'build';
       this.dir = this.isBuild ? 1 : (Math.random() < 0.5 ? 1 : -1);
       const w = this.wpx();
@@ -849,7 +850,7 @@
   function report() {
     api.thingsChanged(things.map(t => t.isBuild
       ? { id: t.id, x: t.x / Math.max(1, W() - t.wpx()) }
-      : { id: t.id }));
+      : (t.hat ? { id: t.id, hat: t.hat } : { id: t.id })));
   }
 
   // ---------- drawing ----------
@@ -918,6 +919,7 @@
       return;
     }
     ctx.drawImage(f.img, Math.round(t.x + t.offX), Math.round(t.top()), t.wpx(), t.hpx());
+    if (t.hat && !t.isBuild) drawHat(t, f.grid, t.x + t.offX, t.top());
   }
 
   function draw() {
@@ -969,8 +971,14 @@
       patternC(BALL, ball.x - 3 * scale, ball.y - 3 * scale, scale);
     }
 
+    drawSnowCaps();
+    drawDrift();
+
     for (const t of list) if (t.state === 'carried') drawThing(t);
     for (const t of list) if (t.state === 'ride') drawThing(t);
+
+    drawRockets();
+    drawFlakes();
 
     const px = Math.max(2, Math.round(scale / 2));
     for (const p of particles) {
@@ -991,6 +999,7 @@
         case 'spark': ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), px, px); break;
         case 'smoke': { const k = p.t / p.life, sz = Math.round(px * (1 + k * 2)); ctx.fillStyle = `rgba(90,94,104,${0.55 * (1 - k)})`; ctx.fillRect(Math.round(p.x - sz / 2), Math.round(p.y - sz / 2), sz, sz); break; }
         case 'crumb': ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), px, px); break;
+        case 'snow': ctx.fillStyle = '#FFFFFF'; ctx.fillRect(Math.round(p.x), Math.round(p.y), px, px); break;
         case 'confetti':
           ctx.fillStyle = p.col;
           ctx.fillRect(Math.round(p.x + Math.sin(p.t * 3 + p.seed) * 6), Math.round(p.y), p.size, p.size * (Math.abs(Math.sin(p.t * 6 + p.seed)) + 0.3));
@@ -1130,7 +1139,8 @@
     await loadPacks(d.packFiles || []);
     resize();
     setHidden(d.hidden);
-    things = (d.things || []).filter(s => REG[s.id]).map(s => new Thing(s.id, { x: s.x }));
+    things = (d.things || []).filter(s => REG[s.id]).map(s => new Thing(s.id, { x: s.x, hat: s.hat }));
+    setSnow(d.snow);
     ready = true;
   });
   api.on('spawn', id => {
@@ -1147,6 +1157,9 @@
   api.on('set-scale', v => { scale = v; things.forEach(t => t.clamp()); });
   api.on('set-hidden', setHidden);
   api.on('set-mischief', v => { mischief = !!v; });
+  api.on('set-snow', setSnow);
+  // Hats for everyone at once (null takes them all off).
+  api.on('set-hats', hat => { for (const p of pets()) p.hat = hat && OUTFITS[hat] ? hat : null; report(); });
   api.on('play', action => {
     if (!ready) return;
     if (hidden) setHidden(false);
@@ -1164,6 +1177,7 @@
     else if (action === 'feed-chocolate') feedFavourite('chocolate');
     else if (action === 'feed-sweets') feedFavourite('sweets');
     else if (action === 'party') party();
+    else if (action === 'fireworks') fireworks();
     else if (action === 'conga') startConga();
     else if (action === 'tidy') {
       // One pet at a time picks a target, and a pet that's about to be carried doesn't
@@ -1189,9 +1203,179 @@
       startBattle(t, other);
     } else if (action === 'chase') { t.say('!'); t.set('chase', rand(8, 12)); }
     else if (action === 'climb') { t.dir = t.x < W() / 2 ? -1 : 1; t.set('toWall', 15); }
+    else if (action === 'hat-santa' || action === 'hat-off') { t.hat = action === 'hat-off' ? null : 'santa'; if (t.hat) heart(t); report(); }
     else if (action === 'grab') { if (!startGrab(t)) t.say('?', 1.2); }
     else t.set(action, action === 'sleep' ? rand(10, 20) : action === 'sit' ? rand(6, 12) : rand(4, 8));
   });
+
+  // ---------- seasons: snow, hats and New Year fireworks ----------
+  // Snow falls gently, piles up in a drift along the bottom of the screen and settles on top of builds.
+  let snowing = false;
+  const flakes = [];
+  let drift = new Float32Array(0);               // snow depth (in sprite pixels) for each column along the bottom
+  const DRIFT_MAX = 3;
+  const driftCol = () => Math.max(2, scale);     // one drift column = one sprite pixel wide
+  function setSnow(on) {
+    snowing = !!on;
+    if (!snowing) flakes.length = 0;
+  }
+  // The top edge of a build's sprite, column by column (sprite pixels from the top, or -1 if empty).
+  function topProfile(t) {
+    const g = frameFor(t, t.spriteState()).grid;
+    if (t._profileKey === g) return t._profile;
+    const prof = [];
+    for (let x = 0; x < t.def.w; x++) { let y = 0; while (y < g.length && !g[y][x]) y++; prof.push(y < g.length ? y : -1); }
+    t._profileKey = g; t._profile = prof;
+    if (!t.snowCap || t.snowCap.length !== prof.length) t.snowCap = new Float32Array(prof.length);
+    return prof;
+  }
+  function updateSnow(dt) {
+    const cols = Math.ceil(W() / driftCol());
+    if (drift.length !== cols) drift = new Float32Array(cols);
+    if (snowing && flakes.length < 140) {
+      const want = W() / 1400 * 22 * dt;        // about 22 flakes a second on a 1400px wide screen
+      for (let n = want + Math.random(); n >= 1; n--) flakes.push({ x: rand(-20, W() + 20), y: -6, vy: rand(26, 52), sway: rand(0, 6), size: Math.random() < 0.2 ? 2 : 1 });
+    }
+    const builds = things.filter(t => t.isBuild && !['carried', 'fall'].includes(t.state) && t.y >= H() - 1);
+    for (let i = flakes.length - 1; i >= 0; i--) {
+      const f = flakes[i];
+      f.y += f.vy * dt;
+      f.x += Math.sin(clock * 0.9 + f.sway) * 14 * dt + 6 * dt;   // a little breeze to the right
+      let landed = false;
+      for (const b of builds) {
+        const gx = Math.floor((f.x - b.x) / scale);
+        if (gx < 0 || gx >= b.def.w) continue;
+        const prof = topProfile(b);
+        if (prof[gx] < 0) continue;
+        const surface = b.top() + (prof[gx] - b.snowCap[gx]) * scale;
+        if (f.y >= surface && f.y < surface + 3 * scale) {
+          b.snowCap[gx] = Math.min(2, b.snowCap[gx] + 0.35);
+          landed = true; break;
+        }
+      }
+      if (!landed && f.y >= H() - (drift[Math.floor(f.x / driftCol())] || 0) * scale) {
+        const c = Math.floor(f.x / driftCol());
+        if (c >= 0 && c < drift.length) drift[c] = Math.min(DRIFT_MAX, drift[c] + 0.3);
+        landed = true;
+      }
+      if (landed || f.y > H() + 10) flakes.splice(i, 1);
+    }
+    // Drifts even out a little, and melt away slowly once the snow stops.
+    for (let c = 1; c < drift.length - 1; c++) {
+      const avg = (drift[c - 1] + drift[c + 1]) / 2;
+      if (drift[c] - avg > 1) { drift[c] -= 0.02; drift[c - 1] += 0.01; drift[c + 1] += 0.01; }
+    }
+    if (!snowing) {
+      for (let c = 0; c < drift.length; c++) drift[c] = Math.max(0, drift[c] - dt * 0.05);
+      for (const b of things) if (b.snowCap) for (let x = 0; x < b.snowCap.length; x++) b.snowCap[x] = Math.max(0, b.snowCap[x] - dt * 0.05);
+    }
+    // Pets walking through a drift kick up a little snow.
+    for (const t of things) {
+      if (t.isBuild || !t.moving() || Math.random() > dt * 6) continue;
+      const c = Math.floor((t.x + t.wpx() / 2) / driftCol());
+      if (drift[c] > 0.8) puff('snow', t.x + t.wpx() / 2, H() - drift[c] * scale, { vx: rand(-40, 40), vy: rand(-90, -40), g: 300, life: 0.6 });
+    }
+  }
+  function drawSnowCaps() {
+    ctx.fillStyle = '#F4F8FF';
+    for (const b of things) {
+      if (!b.isBuild || !b.snowCap || b.state === 'carried') continue;
+      const prof = topProfile(b);
+      for (let x = 0; x < prof.length; x++) {
+        const d = Math.round(b.snowCap[x]);
+        if (d > 0 && prof[x] >= 0) ctx.fillRect(Math.round(b.x + x * scale), Math.round(b.top() + (prof[x] - d) * scale), scale, d * scale);
+      }
+    }
+  }
+  function drawDrift() {
+    const cw = driftCol();
+    for (let c = 0; c < drift.length; c++) {
+      const d = Math.round(drift[c]);
+      if (d <= 0) continue;
+      ctx.fillStyle = '#F4F8FF';
+      ctx.fillRect(c * cw, H() - d * scale, cw, d * scale);
+      ctx.fillStyle = '#D5E2F2';
+      ctx.fillRect(c * cw, H() - scale * 0.5, cw, scale * 0.5);   // a touch of shadow at the bottom
+    }
+  }
+  function drawFlakes() {
+    ctx.fillStyle = '#FFFFFF';
+    const px = Math.max(2, Math.round(scale / 2));
+    for (const f of flakes) ctx.fillRect(Math.round(f.x), Math.round(f.y), px * f.size, px * f.size);
+  }
+
+  // Hats and outfits: drawn on top of a pet's sprite, sitting on the highest part of its head.
+  const OUTFITS = {
+    santa: {
+      name: 'Santa hat',
+      // facing right; the pompom flops backwards. W = white fur, R = red, r = red shade
+      rows: ['W......', '.Rr....', '..RRr..', '.RRRRr.', 'WWWWWWW'],
+      cols: { W: '#F6F6F2', R: '#D6392F', r: '#A82A22' }
+    }
+  };
+  function hatAnchor(grid) {
+    for (let y = 0; y < grid.length; y++) {
+      const row = grid[y];
+      let a = -1, b = -1;
+      for (let x = 0; x < row.length; x++) if (row[x]) { if (a < 0) a = x; b = x; }
+      if (a >= 0) {
+        // the head is the highest part; widen to the row just below so a 1-pixel ear tip doesn't count alone
+        const next = grid[y + 1] || [];
+        let a2 = a, b2 = b;
+        for (let x = 0; x < next.length; x++) if (next[x]) { a2 = Math.min(a2, x); b2 = Math.max(b2, x); }
+        const span = (b2 - a2 + 1) > 9 ? [a, b] : [a2, b2];
+        return { y, cx: (span[0] + span[1]) / 2 };
+      }
+    }
+    return null;
+  }
+  function drawHat(t, grid, x0, y0) {
+    const o = OUTFITS[t.hat];
+    if (!o) return;
+    const a = hatAnchor(grid);
+    if (!a) return;
+    const rows = t.dir < 0 ? o.rows.map(r => [...r].reverse().join('')) : o.rows;
+    const w = rows[0].length;
+    const hx = Math.round(a.cx - (w - 1) / 2), hy = a.y - rows.length + 2;   // brim overlaps the top of the head a little
+    rows.forEach((r, j) => [...r].forEach((ch, i) => {
+      if (!o.cols[ch]) return;
+      ctx.fillStyle = o.cols[ch];
+      ctx.fillRect(Math.round(x0 + (hx + i) * scale), Math.round(y0 + (hy + j) * scale), scale, scale);
+    }));
+  }
+
+  // New Year's Eve: rockets fly up from the taskbar and burst into colour.
+  let fireworksUntil = 0, nextRocket = 0;
+  const rockets = [];
+  function fireworks(seconds = 45) {
+    fireworksUntil = clock + seconds;
+    nextRocket = clock;
+    for (const p of pets()) { p.say('♪', 2); if (!LOCKED.includes(p.state)) p.set('cheer', 3); }
+  }
+  function updateFireworks(dt) {
+    if (clock < fireworksUntil && clock >= nextRocket) {
+      nextRocket = clock + rand(0.35, 1.1);
+      rockets.push({ x: rand(W() * 0.08, W() * 0.92), y: H(), vy: -rand(520, 760), fuse: rand(0.7, 1.15), col: pick(['#FF4F7B', '#FFD84A', '#5DA0E0', '#58C24A', '#B67CF0', '#FF9A2E', '#FFFFFF']) });
+    }
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      r.fuse -= dt; r.y += r.vy * dt; r.vy += 260 * dt;
+      if (Math.random() < 0.7) puff('spark', r.x + rand(-1, 1), r.y + 4, { vy: rand(20, 60), life: 0.35, col: '#FFC98A' });
+      if (r.fuse <= 0) {
+        const n = 34;
+        for (let k = 0; k < n; k++) {
+          const ang = (k / n) * Math.PI * 2 + rand(-0.05, 0.05), sp = rand(150, 260);
+          puff('spark', r.x, r.y, { vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, g: 180, life: rand(0.9, 1.5), col: Math.random() < 0.15 ? '#FFFFFF' : r.col });
+        }
+        rockets.splice(i, 1);
+        if (Math.random() < 0.5) { const p = pick(pets()); if (p) p.say(pick(['!', '❤', '♪']), 1.4); }
+      }
+    }
+  }
+  function drawRockets() {
+    const px = Math.max(2, Math.round(scale / 2));
+    for (const r of rockets) { ctx.fillStyle = r.col; ctx.fillRect(Math.round(r.x), Math.round(r.y), px, px * 2); }
+  }
 
   // ---------- loop (~40fps) ----------
   let last = performance.now();
@@ -1212,6 +1396,8 @@
     positionCarried();
     updateKit(dt);
     updateTreats(dt);
+    updateSnow(dt);
+    updateFireworks(dt);
     socialise();
 
     // Hover over a pet for a moment to give it a pat.

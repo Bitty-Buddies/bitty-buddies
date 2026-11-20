@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-const INCOMING = ['init', 'spawn', 'clear', 'set-scale', 'set-hidden', 'thing-action', 'play', 'set-mischief', 'cursor'];
+const INCOMING = ['init', 'spawn', 'clear', 'set-scale', 'set-hidden', 'thing-action', 'play', 'set-mischief', 'cursor', 'set-snow', 'set-hats'];
 
 contextBridge.exposeInMainWorld('bb', {
   setIgnore: ignore => ipcRenderer.send('set-ignore', !!ignore),
