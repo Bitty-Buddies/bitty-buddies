@@ -94,6 +94,95 @@
         }
       },
 
+      // ---------- more folk, added in 1.1.9 ----------
+      witch: {
+        name: 'Witch', blurb: 'kindly witch with her trusty broom', move: 'walk', speed: 28,
+        draw(P, s) {
+          const c = { robe: '#3A3A4E', robeS: '#2A2A38', hat: '#2A2A38', band: '#9B6BD6', skin: '#BFE0A8', skinS: '#94B87E', hair: '#E2723A', wood: '#7A4E2A', straw: '#E2C25A' };
+          const L = humanoid(P, s, { skin: c.skin, skinShade: c.skinS, hair: c.hair, top: c.robe, topShade: c.robeS, legs: c.robe, boots: '#1E1E28' });
+          P.r(5, L.hy, 7, 1, c.hat); P.r(6, L.hy - 1, 4, 1, c.hat); P.r(6, L.hy - 2, 3, 1, c.hat); P.p(5, L.hy - 3, c.hat);   // pointy hat, tip bent back
+          P.r(6, L.hy - 1, 4, 1, c.band);
+          P.p(6, L.hy + 4, c.hair); P.p(6, L.hy + 5, c.hair);
+          P.r(4, L.by - 2, 1, 8, c.wood); P.r(3, L.by + 5, 3, 2, c.straw);               // broom on her back
+        }
+      },
+
+      bard: {
+        name: 'Bard', blurb: 'lute-strumming songsmith', move: 'walk', speed: 30,
+        draw(P, s) {
+          const c = { tunic: '#C8392F', tunicS: '#9A2A22', skin: '#F0C8A0', skinS: '#C99C74', hair: '#E8C25A', hat: '#2F5DB8', feather: '#F4F4EC', lute: '#C88A4A', luteS: '#9A6A34', string: '#F4F0D8' };
+          const L = humanoid(P, s, { skin: c.skin, skinShade: c.skinS, hair: c.hair, top: c.tunic, topShade: c.tunicS, legs: '#5B3A6A', boots: '#3A2A1C', belt: '#E7B93C' });
+          P.r(6, L.hy - 1, 5, 1, c.hat); P.r(5, L.hy, 6, 1, c.hat); P.p(5, L.hy - 2, c.feather); P.p(4, L.hy - 3, c.feather);   // feathered cap
+          P.r(9, L.by + 1, 3, 3, c.lute); P.p(10, L.by + 2, c.luteS); P.r(11, L.by - 1, 1, 2, c.luteS);   // lute
+          P.p(9, L.by + 1 + (s.frame ? 1 : 0), c.string);
+        }
+      },
+
+      druid: {
+        name: 'Druid', blurb: 'leafy guardian of the forest', move: 'walk', speed: 24,
+        draw(P, s) {
+          const c = { robe: '#7A5A3A', robeS: '#5C4228', leaf: '#58B44A', leafS: '#3E8A34', skin: '#E8C09A', skinS: '#B98E68', beard: '#D8D2C2', wood: '#6A4A2A', flower: '#F2C94C' };
+          const L = humanoid(P, s, { skin: c.skin, skinShade: c.skinS, hair: c.beard, top: c.robe, topShade: c.robeS, legs: c.robe, boots: '#3A2A1C', belt: c.leaf });
+          P.r(6, L.hy - 1, 5, 1, c.leaf); P.p(5, L.hy, c.leaf); P.p(11, L.hy, c.leafS); P.p(8, L.hy - 2, c.flower);   // leaf crown
+          P.r(8, L.hy + 4, 3, 2, c.beard); P.p(9, L.hy + 6, c.beard);
+          P.r(12, L.hy, 1, 14 - L.hy, c.wood); P.r(11, L.hy - 1, 3, 2, c.leaf); P.p(12, L.hy - 2, c.leafS);   // sprouting staff
+        }
+      },
+
+      alchemist: {
+        name: 'Alchemist', blurb: 'goggled potion brewer', move: 'walk', speed: 30,
+        draw(P, s) {
+          const c = { coat: '#4A6A7A', coatS: '#365260', skin: '#E8B48C', skinS: '#B98660', hair: '#5A3A28', goggle: '#E7B93C', lens: '#7FE8FF', glass: '#D8F0F4', potion: s.frame ? '#58D46A' : '#B67CF0', bubble: '#FFFFFF' };
+          const L = humanoid(P, s, { skin: c.skin, skinShade: c.skinS, hair: c.hair, top: c.coat, topShade: c.coatS, legs: '#4A3A2A', boots: '#2A2018', belt: '#7A4E2A' });
+          P.r(6, L.hy + 1, 5, 1, c.goggle); P.p(9, L.hy + 1, c.lens); P.p(10, L.hy + 1, c.lens);   // goggles
+          P.r(10, L.by + 1, 2, 3, c.glass); P.r(10, L.by + 2, 2, 2, c.potion); P.p(10, L.by, c.glass);   // potion flask
+          if (s.pose === 'idle') P.p(11, L.by - 1 - (s.frame ? 1 : 0), c.bubble);
+        }
+      },
+
+      viking: {
+        name: 'Viking', blurb: 'horned helm, gentle heart', move: 'walk', speed: 28,
+        draw(P, s) {
+          const c = { skin: '#E8B48C', skinS: '#B98660', beard: '#D9A03A', tunic: '#7A3A2A', tunicS: '#5A2A1E', fur: '#B8A890', iron: '#9AA2AE', horn: '#F2EDE0', wood: '#8B5A2B', shield: '#2F5DB8', boss: '#E7B93C' };
+          const L = humanoid(P, s, { stout: true, skin: c.skin, skinShade: c.skinS, hair: c.beard, top: c.tunic, topShade: c.tunicS, legs: '#5B4A3A', boots: '#3A2A1C', belt: '#3A2A1C' });
+          P.r(6, L.hy, 5, 2, c.iron); P.r(7, L.hy - 1, 3, 1, c.iron);                    // helm
+          P.p(5, L.hy - 1, c.horn); P.p(5, L.hy - 2, c.horn); P.p(11, L.hy - 1, c.horn); P.p(11, L.hy - 2, c.horn);   // horns
+          P.r(8, L.hy + 3, 4, 3, c.beard); P.p(8, L.hy + 6, c.beard); P.p(10, L.hy + 6, c.beard);   // braided beard
+          P.r(L.bx, L.by, L.bw, 1, c.fur);                                               // fur collar
+          P.r(2, L.by, 3, 4, c.shield); P.p(3, L.by + 1, c.boss); P.p(3, L.by + 2, c.boss);   // round shield
+        }
+      },
+
+      gnome: {
+        name: 'Gnome', blurb: 'tiny gnome with a tall red hat', move: 'walk', speed: 22,
+        draw(P, s) {
+          const c = { hat: '#D6392F', hatS: '#A82A22', skin: '#F0C8A0', skinS: '#C99C74', beard: '#F4F4F0', coat: '#3E6AB8', coatS: '#2E5090', nose: '#F09A8A' };
+          const low = s.pose === 'sit' || s.pose === 'sleep';
+          const step = s.pose === 'walk' && s.frame === 0;
+          const y = low ? 2 : 0;
+          if (low) P.r(5, 12, 6, 1, c.coatS);
+          else { P.r(step ? 5 : 6, 12, 2, 2, '#4A3020'); P.r(step ? 9 : 8, 12, 2, 2, '#4A3020'); }
+          P.r(5, 8 + y, 6, 4 - y, c.coat); P.r(5, 8 + y, 1, 4 - y, c.coatS);
+          P.r(6, 5 + y, 5, 3, c.skin); P.p(10, 6 + y, c.nose); P.p(11, 6 + y, c.nose);   // big round nose
+          P.p(8, 5 + y, s.blink || s.pose === 'sleep' ? c.skinS : '#1B1B1B');
+          P.r(6, 7 + y, 5, 3, c.beard); P.p(8, 10 + y, c.beard);                         // fluffy beard
+          P.r(5, 4 + y, 7, 1, c.hat); P.r(6, 2 + y, 4, 2, c.hat); P.r(6, 0 + y, 3, 2, c.hat); P.p(5, 0 + y, c.hatS);   // tall floppy hat
+          P.r(6, 2 + y, 1, 2, c.hatS);
+        }
+      },
+
+      healer: {
+        name: 'Healer', blurb: 'kind healer with a glowing charm', move: 'walk', speed: 28,
+        draw(P, s) {
+          const c = { robe: '#F2EEE4', robeS: '#CFC8B8', trim: '#E7B93C', skin: '#C88A5A', skinS: '#9A6A44', hair: '#2A1E1A', glow1: '#FFE680', glow2: '#FFF6C8', heart: '#FF6A8A' };
+          const L = humanoid(P, s, { skin: c.skin, skinShade: c.skinS, hair: c.hair, top: c.robe, topShade: c.robeS, legs: c.robe, boots: '#7A5A3A', belt: c.trim });
+          P.r(6, L.hy + 4, 1, 3, c.hair); P.p(7, L.hy + 5, c.hair);                     // long hair
+          P.r(L.bx + 2, L.by + 1, 1, 3, c.trim);                                         // gold trim
+          P.p(L.ax + 1, L.by + 2, s.frame ? c.glow2 : c.glow1); P.p(L.ax + 2, L.by + 2, c.heart);   // glowing charm
+          if (s.pose === 'idle' && s.frame) { P.p(L.ax + 2, L.by, c.glow1); P.p(L.ax + 3, L.by + 1, c.glow2); }
+        }
+      },
+
       // ---------- fantasy builds ----------
       burrow: {
         name: 'Burrow Cottage', blurb: 'a cosy home dug into a grassy hill',
