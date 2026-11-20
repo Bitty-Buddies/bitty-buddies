@@ -2,7 +2,6 @@
 // To add a page: make the .html file with <body data-page="yourid">, then add one line to TABS.
 (() => {
   const DISCORD = 'https://discord.gg/aCHyjABJG7';
-  const KOFI = 'https://ko-fi.com/bittybuddies';
   const DOWNLOAD = 'https://github.com/Bitty-Buddies/bitty-buddies/releases/latest/download/Bitty-Buddies-Setup.exe';
   const STATUS_API = 'https://bitty-admin.reece-feetenby.workers.dev/status';
 
@@ -16,8 +15,7 @@
     // { id: 'faq', label: 'FAQ', href: 'faq.html' },
   ];
   const ELSEWHERE = [
-    { label: 'Discord', href: DISCORD },
-    { label: 'Ko-fi', href: KOFI }
+    { label: 'Discord', href: DISCORD }
   ];
 
   const page = document.body.dataset.page || '';
