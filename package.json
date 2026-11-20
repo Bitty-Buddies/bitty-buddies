@@ -70,7 +70,8 @@
   "bitty": {
     "revokedUrl": "https://raw.githubusercontent.com/Bitty-Buddies/bitty-buddies/main/revoked.json",
     "revokedApi": "https://api.github.com/repos/Bitty-Buddies/bitty-buddies/contents/revoked.json",
-    "statsUrl": "https://bitty-admin.reece-feetenby.workers.dev/stats",
+    "statsApi": "https://abacus.jasoncameron.dev",
+    "statsNamespace": "bitty-buddies",
     "reportUrl": "https://bitty-admin.reece-feetenby.workers.dev/report"
   },
   "overrides": {
