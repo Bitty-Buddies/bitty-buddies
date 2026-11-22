@@ -446,6 +446,7 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
 .terms-body section { padding-top: 1.2rem; scroll-margin-top: 90px; }
 .terms-body section + section { border-top: 2px dashed rgba(46,52,92,.2); margin-top: 1.2rem; }
 .terms-body h2 { margin: 0; color: var(--ink); text-shadow: none; font-size: 1.35rem; }
+.terms-body h3 { margin: 1.1rem 0 .2rem; font-size: 1.02rem; color: var(--ink); text-shadow: none; }
 .terms-body p, .terms-body li { max-width: 42rem; line-height: 1.6; }
 .terms-body p { margin: .7rem 0 0; }
 .terms-body ul { margin: .7rem 0 0; padding-left: 1.3rem; }
