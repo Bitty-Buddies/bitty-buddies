@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buddy Book · Bitty Buddies</title>
+  <meta name="description" content="Every Bitty Buddies buddy and build in one place: where each one comes from, and how to get it. Sign in to see your own collection.">
+  <meta property="og:title" content="Bitty Buddies Buddy Book">
+  <meta property="og:description" content="Every buddy and build, and how to get them.">
+  <meta property="og:image" content="banner.png">
+  <link rel="icon" href="icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=202611221420">
+</head>
+<body class="book-page" data-page="book">
+  <header id="site-header"></header>
+  <script src="chrome.js?v=202611221420"></script>
+
+  <main>
+    <section class="layer dirt book-top">
+      <div class="wrap">
+        <h1 class="page-title">Buddy Book</h1>
+        <p class="lede">Every buddy and build in Bitty Buddies, and how to get each one. Sign in to see which ones you've collected.</p>
+
+        <div class="book-me" id="book-me" aria-live="polite">
+          <p class="book-me-out" id="book-out">Have an account? <a href="account.html">Sign in</a> and come back to see your collection, the names you've given your buddies and how good friends you are.</p>
+          <div class="book-me-in" id="book-in" hidden>
+            <div class="book-me-head">
+              <strong id="book-name"></strong>
+              <span class="book-supporter" id="book-supporter" hidden>Supporter</span>
+            </div>
+            <div class="book-progress" role="progressbar" aria-valuemin="0" id="book-bar"><span id="book-fill"></span></div>
+            <p class="book-count" id="book-count"></p>
+            <ul class="book-stats" id="book-stats"></ul>
+          </div>
+        </div>
+
+        <form class="book-filters" id="book-filters" role="search" onsubmit="return false">
+          <label class="book-search"><span class="sr-only">Search buddies and builds</span>
+            <input type="search" id="book-q" placeholder="Search by name or what they're like" autocomplete="off">
+          </label>
+          <div class="book-chips" role="group" aria-label="Show">
+            <button type="button" class="chip" data-kind="all" aria-pressed="true">Everything</button>
+            <button type="button" class="chip" data-kind="pet" aria-pressed="false">Buddies</button>
+            <button type="button" class="chip" data-kind="build" aria-pressed="false">Builds</button>
+          </div>
+          <div class="book-chips" role="group" aria-label="Collection" id="book-own" hidden>
+            <button type="button" class="chip" data-own="all" aria-pressed="true">All</button>
+            <button type="button" class="chip" data-own="have" aria-pressed="false">Collected</button>
+            <button type="button" class="chip" data-own="missing" aria-pressed="false">Still to get</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="layer stone-layer book-body">
+      <div class="wrap" id="book"></div>
+      <p class="wrap book-empty" id="book-empty" hidden>Nothing matches that. Try another name.</p>
+    </section>
+  </main>
+
+  <footer id="site-footer" class="bedrock site-footer"></footer>
+
+  <script src="js/pixel.js?v=202611221420"></script>
+  <script src="js/packs/critters.js?v=202611221420"></script>
+  <script src="js/packs/builds.js?v=202611221420"></script>
+  <script src="js/packs/fantasy.js?v=202611221420"></script>
+  <script src="js/packs/serverroom.js?v=202611221420"></script>
+  <script src="js/packs/shop.js?v=202611221420"></script>
+  <script src="js/advent.js?v=202611221420"></script>
+  <script src="js/shop.js?v=202611221420"></script>
+  <script src="site.js?v=202611221420"></script>
+  <script src="buddybook.js?v=202611221420"></script>
+</body>
+</html>

@@ -8,6 +8,7 @@
   const TABS = [
     { id: 'home', label: 'Home', href: './' },
     { id: 'packs', label: 'Packs', href: 'packs.html' },
+    { id: 'book', label: 'Buddy Book', href: 'buddybook.html' },
     { id: 'team', label: 'Team', href: 'team.html' },
     { id: 'members', label: 'Members', href: 'members.html' },
     { id: 'status', label: 'Status', href: 'status.html' },
