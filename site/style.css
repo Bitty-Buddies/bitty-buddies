@@ -432,6 +432,9 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
 
 /* ---------- Server Room ---------- */
 .pack-card.server { background: #E4EAF2; }
+.pack-card.bundle { background: #F3EAFB; grid-column: 1 / -1; }
+.pack-card.bundle .bundle-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
+.pack-card.bundle .bundle-list li { font: 700 .95rem var(--display); background: #fff; border: 3px solid var(--ink); padding: 4px 10px; }
 .pack-card.server .trailer { background: #141820; }
 .pack-tile.server { background: #1E2430; color: #E8F0FA; }
 .pack-tile.server span:last-child { color: #7AF09A; }
