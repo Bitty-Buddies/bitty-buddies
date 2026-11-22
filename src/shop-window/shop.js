@@ -133,25 +133,63 @@
     return card;
   }
 
+  // ---------- Packs (real money, bought in the browser) ----------
+  function packArt(ids) {
+    const box = el('div', 'pack-art');
+    for (const id of ids) {
+      const def = REG[id]; if (!def) continue;
+      const grid = PX.drawItem(def, { pose: 'idle', frame: 0, blink: false });
+      const cv = el('canvas'); cv.width = grid[0].length; cv.height = grid.length;
+      const ctx = cv.getContext('2d');
+      grid.forEach((row, y) => row.forEach((c, x) => { if (c) { ctx.fillStyle = c; ctx.fillRect(x, y, 1, 1); } }));
+      cv.style.height = `${Math.min(70, Math.round(48 * def.h / 20))}px`;
+      box.append(cv);
+    }
+    return box;
+  }
+  function renderPacks() {
+    const box = $('paid');
+    box.textContent = '';
+    const pick = (pack, n) => state.book.filter(b => b.pack === pack && b.kind === 'pet').slice(0, n).map(b => b.id);
+    const art = { builds: state.book.filter(b => b.pack === 'builds').slice(3, 6).map(b => b.id), fantasy: pick('fantasy', 4), bundle: [...pick('fantasy', 1), ...pick('serverroom', 2), ...state.book.filter(b => b.pack === 'builds').slice(4, 5).map(b => b.id)] };
+    for (const p of state.paid) {
+      const card = el('div', 'item' + (p.owned ? ' owned' : '') + (p.id === 'bundle' ? ' best' : ''));
+      card.append(packArt(art[p.id] || []), el('b', null, p.name), el('div', 'blurb', p.blurb), el('div', 'money', p.price));
+      const btn = el('button', 'act', p.owned ? 'Owned ✓' : `Buy for ${p.price}`);
+      btn.disabled = p.owned;
+      btn.onclick = () => { window.shop.open(p.id); toast('Opening the shop in your browser…'); };
+      card.append(btn);
+      box.append(card);
+    }
+    $('go-signin').hidden = state.signedIn;
+    $('step-signin').textContent = state.signedIn ? 'You\'re signed in, so redeemed packs unlock here by themselves.' : 'Sign in here with the same account and the pack unlocks.';
+  }
+  $('go-redeem').onclick = () => { window.shop.open('redeem'); toast('Opening your account page…'); };
+  $('go-signin').onclick = () => window.shop.open('signin');
+  $('go-licence').onclick = () => window.shop.open('licence');
+
   function render(s) {
     if (s) state = s;
     if (!state) return;
     $('balance').textContent = String(state.wallet.balance);
     renderShop();
+    renderPacks();
     if (!editing) renderBook();
   }
   function showTab(tab) {
     for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
     $('panel-shop').hidden = tab !== 'shop';
     $('panel-book').hidden = tab !== 'book';
-    document.title = tab === 'book' ? 'Buddy Book' : 'Bitty Shop';
+    $('panel-packs').hidden = tab !== 'packs';
+    document.title = tab === 'book' ? 'Buddy Book' : tab === 'packs' ? 'Bitty Buddies packs' : 'Bitty Shop';
   }
   for (const b of document.querySelectorAll('[data-tab]')) b.onclick = () => showTab(b.dataset.tab);
   window.shop.onTab(showTab);
   window.shop.onUpdate(s => { if (!editing) render(s); else { state = s; $('balance').textContent = String(s.wallet.balance); } });
 
   drawCoin($('coin'));
-  showTab(new URLSearchParams(location.search).get('tab') === 'book' ? 'book' : 'shop');
+  const firstTab = new URLSearchParams(location.search).get('tab');
+  showTab(['book', 'packs'].includes(firstTab) ? firstTab : 'shop');
   window.shop.state().then(async s => {
     const files = [...new Set(['critters.js', ...s.book.map(b => b.file)])];
     await loadPacks(files);

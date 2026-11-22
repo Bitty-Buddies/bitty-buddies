@@ -47,6 +47,14 @@
     #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 9px 14px; border: 3px solid #fff; box-shadow: 4px 4px 0 rgba(0,0,0,.25); max-width: 90%; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
     #toast.show { opacity: 1; }
     #toast.err { background: var(--red); }
+    .grid.packs { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .pack-art { display: flex; justify-content: center; align-items: flex-end; gap: 2px; height: 84px; background: linear-gradient(#DDF0FB 0 78%, #A6D98F 78%); border: 2px solid #CBD3E1; overflow: hidden; }
+    .pack-art { gap: 6px; padding-bottom: 4px; }
+    .pack-art canvas { width: auto; height: 64px; max-height: 70px; max-width: 30%; object-fit: contain; background: none; border: none; }
+    .money { font-weight: bold; font-size: 16px; }
+    .item.best { border-color: var(--gold); box-shadow: 0 0 0 3px #FFF1C2 inset; }
+    .steps { margin: 0 0 10px; padding-left: 20px; font-size: 13px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
     [hidden] { display: none !important; }
     @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
   </style>
@@ -59,6 +67,7 @@
   <nav role="tablist">
     <button role="tab" id="tab-shop" data-tab="shop" aria-selected="true">Shop</button>
     <button role="tab" id="tab-book" data-tab="book" aria-selected="false">📖 Buddy Book</button>
+    <button role="tab" id="tab-packs" data-tab="packs" aria-selected="false">🛒 Packs</button>
   </nav>
   <main>
     <section id="panel-shop">
@@ -76,6 +85,22 @@
       <div class="stats" id="stats"></div>
       <p class="intro">Every buddy and build you can collect. Buddies become better friends the longer they're out: name them, and watch their hearts fill up.</p>
       <div id="book"></div>
+    </section>
+    <section id="panel-packs" hidden>
+      <p class="intro">Extra packs are a one-off payment, no subscription. You buy in our shop in your browser, then redeem the code from your receipt email and the pack unlocks here.</p>
+      <div class="grid packs" id="paid"></div>
+      <h2>Already bought one?</h2>
+      <ol class="steps">
+        <li>Find the purchase code in your receipt email.</li>
+        <li>Redeem it on your account page.</li>
+        <li id="step-signin">Sign in here with the same account and the pack unlocks.</li>
+      </ol>
+      <div class="row">
+        <button class="act" type="button" id="go-redeem">Redeem a code</button>
+        <button class="act ghost" type="button" id="go-signin">Sign in…</button>
+        <button class="act ghost" type="button" id="go-licence">Enter licence key…</button>
+      </div>
+      <p class="cap">Buddy Bucks can't buy packs, and packs never cost Buddy Bucks.</p>
     </section>
   </main>
   <div id="toast" role="status" aria-live="polite"></div>

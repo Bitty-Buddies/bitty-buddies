@@ -494,6 +494,19 @@ function openShopWindow(tab = 'shop') {
   shopWin.on('closed', () => { shopWin = null; });
   if (IS_MAC) app.focus({ steal: true });
 }
+// Real-money packs, shown in the Bitty Shop's Packs tab. Buying happens on our Payhip shop in the browser;
+// the receipt email has a code to redeem on the account page, then the pack unlocks here.
+const ACCOUNT_PAGE = 'https://bitty-buddies.github.io/account.html';
+const PAID_PACKS = [
+  { id: 'builds', name: 'Builds', price: '£1', url: 'https://payhip.com/b/eUfOF', packs: ['builds'],
+    blurb: '10 builds for your village: a windmill, a wishing well, a fountain, a market stall and more.' },
+  { id: 'fantasy', name: 'Fantasy Folk', price: '£2.99', url: 'https://payhip.com/b/tA5Ho', packs: ['fantasy'],
+    blurb: '11 adventurers and 4 homes. The Witch flies on her broom and the Wizard casts real magic.' },
+  { id: 'bundle', name: 'Everything Bundle', price: '£12.99', url: 'https://payhip.com/b/ngN9f', packs: ['fantasy', 'builds', 'serverroom', 'supporter'],
+    blurb: 'Fantasy Folk, Builds, Server Room and the Supporter Pack (a golden hat for everyone). The only way to get Server Room right now.' }
+];
+const paidOwned = p => p.packs.every(id => { const pk = PACKS.find(x => x.id === id); return pk ? packUnlocked(pk) : licence.isUnlocked(id); });
+
 // Everything the window shows. Private packs only appear once unlocked, and never as silhouettes.
 function shopState() {
   const book = [];
@@ -507,7 +520,8 @@ function shopState() {
   }
   return {
     wallet: bucks.view(wallet), catalogue: bucks.CATALOGUE, book,
-    hats: hatsFor(null).map(h => h.id), supporter: licence.isUnlocked('supporter'), signedIn: !!account
+    hats: hatsFor(null).map(h => h.id), supporter: licence.isUnlocked('supporter'), signedIn: !!account,
+    paid: PAID_PACKS.map(p => ({ id: p.id, name: p.name, price: p.price, blurb: p.blurb, packs: p.packs, owned: paidOwned(p) }))
   };
 }
 ipcMain.handle('shop:state', () => shopState());
@@ -528,6 +542,15 @@ ipcMain.handle('shop:name', (_e, { id, name } = {}) => {
   return shopState();
 });
 ipcMain.handle('shop:spawn', (_e, id) => { if (itemUnlocked(id)) send('spawn', id); return true; });
+// Packs tab buttons. Only these fixed destinations can be opened, never a URL from the window.
+ipcMain.handle('shop:open', (_e, what) => {
+  const p = PAID_PACKS.find(x => x.id === what);
+  if (p) shell.openExternal(p.url);
+  else if (what === 'redeem') shell.openExternal(ACCOUNT_PAGE);
+  else if (what === 'signin') openSignInWindow();
+  else if (what === 'licence') openLicenceWindow();
+  return true;
+});
 ipcMain.handle('shop:hats', (_e, hat) => { if (!hat || hatAllowed(hat, null)) send('set-hats', hat || null); return true; });
 
 ipcMain.on('thing-menu', (_e, { uid, id }) => {
@@ -635,6 +658,7 @@ function buildTrayMenu() {
     { label: `🪙 ${bucks.balance(wallet)} Buddy Bucks`, click: () => openShopWindow('shop') },
     { label: '🛍️ Bitty Shop…', click: () => openShopWindow('shop') },
     { label: '📖 Buddy Book…', click: () => openShopWindow('book') },
+    { label: '🛒 Get more packs…', click: () => openShopWindow('packs') },
     { type: 'separator' },
     { label: 'Spawn', submenu: spawnMenu('pet') },
     { label: 'Build', submenu: spawnMenu('build') },
