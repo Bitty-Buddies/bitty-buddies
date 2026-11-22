@@ -1,7 +1,7 @@
 {
   "name": "bitty-buddies",
   "productName": "Bitty Buddies",
-  "version": "1.1.9",
+  "version": "1.2.0",
   "description": "Blocky pixel pets that live on your desktop.",
   "author": "WiggleCodes",
   "license": "SEE LICENSE IN LICENSE",
@@ -72,7 +72,8 @@
     "revokedApi": "https://api.github.com/repos/Bitty-Buddies/bitty-buddies/contents/revoked.json",
     "statsApi": "https://abacus.jasoncameron.dev",
     "statsNamespace": "bitty-buddies",
-    "reportUrl": "https://bitty-admin.reece-feetenby.workers.dev/report"
+    "reportUrl": "https://bitty-admin.reece-feetenby.workers.dev/report",
+    "channel": "test"
   },
   "overrides": {
     "minimatch@>=7.0.0 <11.0.1": "^11.0.8"

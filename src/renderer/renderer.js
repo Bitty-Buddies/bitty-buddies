@@ -71,6 +71,12 @@
   function puff(kind, x, y, extra = {}) {
     particles.push(Object.assign({ kind, x, y, vx: 0, vy: 0, g: 0, t: 0, life: 1 }, extra));
   }
+  // Buddy Bucks: tell the app something worth a few Bucks happened (it applies the limits).
+  function earn(kind) { if (api.earn && !hidden) api.earn(kind); }
+  function coinFrom(t, n = 1) {
+    if (!t) return;
+    for (let i = 0; i < Math.min(5, n); i++) puff('coin', t.x + t.wpx() / 2 + rand(-6, 6), t.top() - 2, { vy: -rand(34, 48), vx: rand(-14, 14), life: 1.5 + i * 0.15 });
+  }
   function heart(t) { puff('heart', t.x + t.wpx() / 2, t.top(), { vy: -32, life: 1.4 }); }
   function dust(x, y, n = 5) {
     for (let i = 0; i < n; i++) puff('dust', x, y, { vx: rand(-60, 60), vy: rand(-60, -10), life: rand(.35, .6) });
@@ -158,6 +164,9 @@
       }
       if (this.target && this.target.claimed === this) this.target.claimed = null;
       this.target = null;
+      // Buddy Bucks: a proper nap (not a doze that was interrupted straight away) earns a little.
+      if (this.state === 'sleep' && state !== 'sleep' && clock - (this.sleptAt || clock) > 5) earn('nap');
+      if (state === 'sleep' && this.state !== 'sleep') this.sleptAt = clock;
       this.state = state;
       this.timer = dur != null ? dur : rand(2, 6);
       if (state === 'walk' && Math.random() < 0.5) this.dir *= -1;
@@ -610,6 +619,7 @@
             const loser = Math.random() < 0.5 ? a : b, winner = loser === a ? b : a;
             loser.set('dizzy', 3.2);
             winner.set('cheer', 2.6);
+            earn('battle');
             puff('crown', winner.x + winner.wpx() / 2, winner.top() - 2 * scale, { vy: -12, life: 2.4 });
             battles.splice(i, 1);
             continue;
@@ -787,7 +797,7 @@
       o.set('carried', 99); o.carrier = p;
       if (!o.isBuild) o.say(pick(['!', '❤', '?']), 1.4);
     } else if (c.kind === 'treat') c.obj.carried = true;
-    else if (c.kind === 'ball') c.obj.carrier = p;
+    else if (c.kind === 'ball') { c.obj.carrier = p; earn('ball'); }
     p.state = 'haul';
     p.timer = 14;
     let goal;
@@ -906,8 +916,10 @@
     '🍫': { rows: ['XXXXX', 'X.X.X', 'XXXXX', 'X.X.X', 'XXXXX'], col: '#7A4424' },
     '🍬': { rows: ['X...X', 'XXXXX', '.XXX.', 'XXXXX', 'X...X'], col: '#F05A9A' },
     '😋': { rows: ['X...X', '.....', 'X...X', '.XXX.', '..XX.'], col: '#E8394A' },
-    'prr': { rows: ['XX.X.', 'X.XX.', 'XX.X.', 'X..X.', 'X..X.'], col: '#8B5CF6' }
+    'prr': { rows: ['XX.X.', 'X.XX.', 'XX.X.', 'X..X.', 'X..X.'], col: '#8B5CF6' },
+    '🎁': { rows: ['X.X.X', '.XXX.', 'XXXXX', 'XXXXX', 'XXXXX'], col: '#E0483A' }
   };
+  const COIN = { rows: ['.GGG.', 'GYYYG', 'GYGYG', 'GYYYG', '.GGG.'], cols: { G: '#D99A1E', Y: '#FFD84A' } };
   const BALL = { rows: ['.RRRR.', 'RWRRRR', 'RRRRRR', 'RRYYRR', 'RRRRRD', '.RDDD.'], cols: { R: '#E0483A', W: '#FFFFFF', Y: '#FFD84A', D: '#A82E24' } };
 
   function pattern(rows, cx, y, px, colour) {
@@ -1026,6 +1038,8 @@
         case 'z': pattern(PATTERNS.z, p.x + Math.sin(p.t * 3) * 3 * px, p.y, px, '#8FA2FF'); break;
         case 'note': pattern(PATTERNS.note, p.x + Math.sin(p.t * 4) * 2 * px, p.y, px, '#8B5CF6'); break;
         case 'crown': pattern(PATTERNS.crown, p.x, p.y - 3 * px, px, '#FFC93C'); break;
+        case 'coin': patternC(COIN, Math.round(p.x - 2.5 * px), Math.round(p.y - 5 * px), px); break;
+        case 'star': pattern(PATTERNS.star, p.x, p.y - 1.5 * px, px, '#FFD84A'); break;
         case 'pow': {
           const s = Math.max(2, Math.round(scale * (0.8 + 0.6 * (p.t / p.life))));
           pattern(PATTERNS.pow, p.x, p.y - 3.5 * s, s, '#FFD84A');
@@ -1111,6 +1125,11 @@
     const t = thingAt(p.x, p.y);
     const overBall = ballAt(p.x, p.y);
     if (t !== hover.t) { hover.t = t; hover.since = clock; }
+    for (const q of pets()) {
+      if ((friends[q.id] || 1) < 2 || !['idle', 'walk', 'sit'].includes(q.state) || clock < (q.hopAt || 0)) continue;
+      const cx = q.x + q.wpx() / 2;
+      if (Math.abs(p.x - cx) < 40 && p.y > q.top() - 60 && p.y < H()) { q.hopAt = clock + 25; q.set('cheer', 0.9); heart(q); }
+    }
     if (t || overBall) { setInteractive(true); document.body.style.cursor = 'grab'; }
   });
 
@@ -1197,6 +1216,20 @@
   api.on('set-snow', setSnow);
   // Hats for everyone at once (null takes them all off).
   api.on('set-hats', hat => { for (const p of pets()) p.hat = hat && OUTFITS[hat] ? hat : null; report(); });
+  // A Buck dropped: a little coin floats up from one of the buddies out on screen.
+  api.on('bucks-drop', n => { if (hidden || !pets().length) return; const ps = pets().filter(p => !LOCKED.includes(p.state)); coinFrom(pick(ps.length ? ps : pets()), n); });
+  // The daily gift: a buddy cheers and showers coins.
+  api.on('bucks-gift', () => {
+    if (hidden) return;
+    const p = pick(pets());
+    if (!p) return;
+    if (!LOCKED.includes(p.state)) p.set('cheer', 2.4);
+    p.say('🎁', 3);
+    setTimeout(() => coinFrom(p, 5), 600);
+  });
+  // Friendship levels by item id: Pals (level 2+) hop happily when your cursor comes by.
+  let friends = {};
+  api.on('set-friends', map => { friends = map && typeof map === 'object' ? map : {}; });
   api.on('play', action => {
     if (!ready) return;
     if (hidden) setHidden(false);
@@ -1242,7 +1275,13 @@
     else if (action === 'climb') { t.dir = t.x < W() / 2 ? -1 : 1; t.set('toWall', 15); }
     else if (action === 'fly') startFly(t);
     else if (action === 'cast') t.set('cast', 1.8);
-    else if (action === 'hat-santa' || action === 'hat-off') { t.hat = action === 'hat-off' ? null : 'santa'; if (t.hat) heart(t); report(); }
+    else if (action === 'hat-off') { t.hat = null; report(); }
+    else if (action.startsWith('hat:')) { const h = action.slice(4); if (OUTFITS[h]) { t.hat = h; heart(t); report(); } }
+    else if (action === 'hat-santa') { t.hat = 'santa'; heart(t); report(); }
+    else if (action === 'trick') {        // Best buddies (friendship level 3) show off
+      t.set('cheer', 1.8); heart(t);
+      for (let k = 0; k < 6; k++) puff('star', t.x + t.wpx() / 2, t.top(), { vx: Math.cos(k) * 70, vy: -rand(60, 110), g: 120, life: 1 });
+    }
     else if (action === 'grab') { if (!startGrab(t)) t.say('?', 1.2); }
     else t.set(action, action === 'sleep' ? rand(10, 20) : action === 'sit' ? rand(6, 12) : rand(4, 8));
   });
@@ -1395,44 +1434,13 @@
     for (const f of flakes) ctx.fillRect(Math.round(f.x), Math.round(f.y), px * f.size, px * f.size);
   }
 
-  // Hats and outfits: drawn on top of a pet's sprite, sitting on the highest part of its head.
-  const OUTFITS = {
-    santa: {
-      name: 'Santa hat',
-      // facing right; the pompom flops backwards. W = white fur, R = red, r = red shade
-      rows: ['W......', '.Rr....', '..RRr..', '.RRRRr.', 'WWWWWWW'],
-      cols: { W: '#F6F6F2', R: '#D6392F', r: '#A82A22' }
-    }
-  };
-  function hatAnchor(grid) {
-    for (let y = 0; y < grid.length; y++) {
-      const row = grid[y];
-      let a = -1, b = -1;
-      for (let x = 0; x < row.length; x++) if (row[x]) { if (a < 0) a = x; b = x; }
-      if (a >= 0) {
-        // the head is the highest part; widen to the row just below so a 1-pixel ear tip doesn't count alone
-        const next = grid[y + 1] || [];
-        let a2 = a, b2 = b;
-        for (let x = 0; x < next.length; x++) if (next[x]) { a2 = Math.min(a2, x); b2 = Math.max(b2, x); }
-        const span = (b2 - a2 + 1) > 9 ? [a, b] : [a2, b2];
-        return { y, cx: (span[0] + span[1]) / 2 };
-      }
-    }
-    return null;
-  }
+  // Hats and outfits (src/shared/outfits.js): drawn on top of a pet's sprite, sitting on the highest part of its head.
+  const OUTFITS = BBOutfits.OUTFITS;
   function drawHat(t, grid, x0, y0) {
-    const o = OUTFITS[t.hat];
-    if (!o) return;
-    const a = hatAnchor(grid);
-    if (!a) return;
-    const rows = t.dir < 0 ? o.rows.map(r => [...r].reverse().join('')) : o.rows;
-    const w = rows[0].length;
-    const hx = Math.round(a.cx - (w - 1) / 2), hy = a.y - rows.length + 2;   // brim overlaps the top of the head a little
-    rows.forEach((r, j) => [...r].forEach((ch, i) => {
-      if (!o.cols[ch]) return;
-      ctx.fillStyle = o.cols[ch];
-      ctx.fillRect(Math.round(x0 + (hx + i) * scale), Math.round(y0 + (hy + j) * scale), scale, scale);
-    }));
+    for (const d of BBOutfits.hatPixels(grid, t.hat, t.dir)) {
+      ctx.fillStyle = d.col;
+      ctx.fillRect(Math.round(x0 + d.x * scale), Math.round(y0 + d.y * scale), scale, scale);
+    }
   }
 
   // New Year's Eve: rockets fly up from the taskbar and burst into colour.

@@ -7,6 +7,7 @@
 })(typeof self !== 'undefined' ? self : this, {
   id: 'builds',
   name: 'Builds',
+  licensed: true,     // a paid pack (£1). People who had the app before it was paid keep it (see main.js).
   items: {
     shrine: {
       name: 'Shrine', blurb: 'stone shrine with a glowing crystal',
