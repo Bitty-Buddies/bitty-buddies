@@ -273,25 +273,6 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
 .foot-legal p { margin: .3rem 0; max-width: 60rem; }
 @media (max-width: 640px) { .foot-grid { grid-template-columns: 1fr 1fr; } .foot-about { grid-column: 1 / -1; } }
 
-/* team page */
-.member { display: grid; grid-template-columns: 17rem minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 1.8rem; background: var(--paper); color: var(--ink); border: 3px solid var(--ink); box-shadow: 6px 6px 0 rgba(0,0,0,.35); padding: 24px; max-width: 64rem; }
-.member-card { background: #232428; color: #F2F3F5; border: 3px solid var(--ink); overflow: hidden; }
-.member-banner { height: 84px; background: #5865F2 center / cover no-repeat; }
-.member-avatar { width: 104px; height: 104px; margin: -52px 0 0 16px; position: relative; display: grid; place-items: center; background: linear-gradient(var(--sky-top), var(--sky-low) 70%, var(--grass) 70% 80%, var(--dirt) 80%); border: 6px solid #232428; border-radius: 50%; overflow: hidden; }
-.member-avatar canvas { width: 70%; height: auto; image-rendering: pixelated; margin-bottom: 10px; }
-.member-avatar.photo canvas { display: none; }
-.member-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
-.member-id { display: grid; gap: 4px; padding: 10px 16px 18px; }
-.member-name { font: 700 1.5rem var(--display); }
-.member-handle { color: #B5BAC1; font-weight: 700; }
-.member-id .tag { justify-self: start; margin-top: 6px; }
-.member-body h2 { margin: 0; color: var(--ink); text-shadow: none; }
-.member-body p { margin: .8rem 0 0; max-width: 40rem; }
-.member-links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 1.2rem; }
-.join-team { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
-.join-team .btn.big { margin-top: 0; }
-@media (max-width: 760px) { .member { grid-template-columns: 1fr; } .member-card { max-width: 20rem; } }
-
 /* account page */
 .account-msg { max-width: 40rem; margin: 1rem 0 0; padding: 10px 14px; font-weight: 700; color: #7A1F12; background: #FDE3DF; border: 3px solid var(--ink); }
 .account-msg.good { color: #24561A; background: #DDF3D3; }
@@ -647,77 +628,6 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
 .status-page .stone-layer { background-size: auto, 64px 64px, 64px 64px; background-position: center bottom, 0 0, 0 0; background-repeat: no-repeat, repeat, repeat; }
 .console-line { flex-wrap: nowrap; align-items: baseline; }
 #banner-text { flex: 0 1 auto; }
-
-/* ---------- meet the team: an organisation tree ---------- */
-.org { --line: #F2E3C8; --gap: 30px; margin-top: 2.2rem; overflow-x: auto; padding: 6px 4px 14px; }
-.org-tree, .org-tree ul { display: flex; justify-content: center; margin: 0; padding: 0; list-style: none; }
-.org-tree ul { position: relative; padding-top: var(--gap); }
-.org-tree ul::before { content: ""; position: absolute; top: 0; left: 50%; height: var(--gap); border-left: 3px solid var(--line); }
-.org-tree li { position: relative; display: flex; flex-direction: column; align-items: center; padding: var(--gap) 12px 0; }
-.org-tree li::before, .org-tree li::after { content: ""; position: absolute; top: 0; right: 50%; width: 50%; height: var(--gap); border-top: 3px solid var(--line); }
-.org-tree li::after { right: auto; left: 50%; border-left: 3px solid var(--line); }
-.org-tree li:only-child::before { display: none; }
-.org-tree li:only-child::after { border-top: 0; }
-.org-tree li:first-child::before, .org-tree li:last-child::after { border-top: 0; }
-.org-tree li:last-child::before { border-right: 3px solid var(--line); }
-.org-tree li:last-child:not(:only-child)::after { border-left: 0; }
-.org-tree > li { padding-top: 0; }
-.org-tree > li::before, .org-tree > li::after { display: none; }
-
-.org-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 19rem; padding: 12px 14px; text-align: left; font: inherit; cursor: pointer;
-  background: #232428; color: #F2F3F5; border: 3px solid var(--ink); border-top: 7px solid var(--accent, #5865F2); box-shadow: 5px 5px 0 rgba(0,0,0,.4); transition: transform .12s, box-shadow .12s; }
-.org-card:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 rgba(0,0,0,.4); }
-.org-card:focus-visible { outline: 4px solid #F2C14E; outline-offset: 3px; }
-.org-card.founder { width: 22rem; padding: 16px 18px; }
-.org-text { display: grid; gap: 2px; min-width: 0; }
-.org-name { font: 700 1.12rem var(--display); }
-.org-card.founder .org-name { font-size: 1.35rem; }
-.org-title { color: #DBDEE1; font-size: .92rem; line-height: 1.3; }
-.org-handle { color: #A5ABB5; font-size: .82rem; font-weight: 700; }
-.org-count { align-self: start; font-size: .8rem; font-weight: 700; color: #DBDEE1; background: #2F3136; border: 2px solid #44474F; padding: 1px 6px; }
-.member-avatar.small, .member-avatar.tiny { margin: 0; border-color: #232428; }
-.member-avatar.small { width: 58px; height: 58px; border-width: 3px; }
-.org-card.founder .member-avatar.small { width: 72px; height: 72px; }
-.member-avatar.tiny { width: 30px; height: 30px; border-width: 2px; border-color: var(--ink); }
-.member-avatar.small canvas, .member-avatar.tiny canvas { margin-bottom: 4px; }
-.org-hint { margin: 14px 0 0; text-align: center; color: #F2E3C8; font-size: .95rem; }
-
-/* the profile window */
-.person { width: min(40rem, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; overflow: auto; color: var(--ink); background: var(--paper); border: 3px solid var(--ink); box-shadow: 8px 8px 0 rgba(0,0,0,.45); }
-.person::backdrop { background: rgba(14, 16, 26, .65); }
-.person .member-card { position: relative; border: 0; border-bottom: 3px solid var(--ink); }
-.person .member-banner { height: 110px; }
-.person-close { position: absolute; top: 10px; right: 10px; width: 38px; height: 38px; font: 700 1.1rem var(--body); color: #fff; background: rgba(20, 22, 28, .75); border: 2px solid #fff; cursor: pointer; }
-.person-close:focus-visible { outline: 3px solid #F2C14E; outline-offset: 2px; }
-.person-body { padding: 18px 24px 24px; }
-.person-body h2 { margin-top: 0; }
-.person-body p { line-height: 1.65; max-width: 62ch; }
-.person-links { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0 4px; }
-.rel-group h3 { margin: 20px 0 8px; font-size: 1rem; }
-.rel-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.person-chip { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; font: 700 .95rem var(--body); color: var(--ink); background: #fff; border: 2px solid var(--ink); box-shadow: 3px 3px 0 rgba(0,0,0,.2); cursor: pointer; }
-.person-chip:hover { background: #F1F4FA; }
-.person-chip:focus-visible { outline: 3px solid #3E8FE6; outline-offset: 2px; }
-
-/* phones: the tree becomes a list with lines down the left */
-@media (max-width: 720px) {
-  .org { --gap: 16px; overflow: visible; }
-  .org-tree, .org-tree ul { display: block; }
-  .org-tree ul { margin-left: 28px; padding: 0 0 0 22px; border-left: 3px solid var(--line); }
-  .org-tree ul::before { display: none; }
-  .org-tree li { display: block; padding: var(--gap) 0 0; }
-  .org-tree li::after { display: none; }
-  .org-tree li::before { display: block !important; top: calc(var(--gap) + 34px); left: -22px; right: auto; width: 22px; height: 0; border: 0; border-top: 3px solid var(--line) !important; }
-  .org-tree > li::before { display: none !important; }
-  .org-tree ul { border-left: 0; }
-  .org-tree ul > li::after { display: block; left: -22px; right: auto; top: 0; bottom: 0; width: 0; height: auto; border: 0; border-left: 3px solid var(--line); }
-  .org-tree ul > li:last-child::after, .org-tree ul > li:last-child:not(:only-child)::after { bottom: auto; height: calc(var(--gap) + 34px); border-left: 3px solid var(--line); }
-  .org-card, .org-card.founder { width: 100%; }
-}
-@media (prefers-reduced-motion: reduce) { .org-card { transition: none; } .org-card:hover { transform: none; } }
-
-.redeem-hint { margin: 0 0 14px; text-align: center; }
-.buy-note { margin: .6rem 0 0; font-size: .9rem; }
 
 /* ---------- Buddy Book ---------- */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
