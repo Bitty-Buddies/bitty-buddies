@@ -476,7 +476,7 @@ function pushBucks(force = false) {
   lastPush = wallet.updated;
   net.fetch(`${ACCOUNT_API}/account/bucks`, {
     method: 'POST', headers: { authorization: `Bearer ${account.token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ wallet })
+    body: JSON.stringify({ wallet: { ...wallet, keepBuilds: !!settings.keepBuilds } })   // lets the website's Buddy Book show Builds you kept free
   }).catch(() => { lastPush = 0; });
 }
 

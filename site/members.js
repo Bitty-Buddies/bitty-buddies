@@ -25,7 +25,8 @@
       for (const id of m.badges) { const b = badges.find(x => x.id === id); if (b) chips.appendChild(BBBadge(b)); }
       const joined = document.createElement('span'); joined.className = 'member-tile-joined';
       joined.textContent = m.joined ? `Joined ${new Date(m.joined).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}` : '';
-      li.append(av, name, handle, chips, joined);
+      const book = document.createElement('a'); book.className = 'member-book'; book.href = `buddybook.html?u=${encodeURIComponent(m.username)}`; book.textContent = '📖 Buddy Book';
+      li.append(av, name, handle, chips, joined, book);
       grid.appendChild(li);
     }
     if (!shown.length) { const li = document.createElement('li'); li.className = 'member-empty'; li.textContent = 'No members match.'; grid.appendChild(li); }

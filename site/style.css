@@ -772,3 +772,5 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
   .book-blurb { font-size: .85rem; }
 }
 @media (prefers-reduced-motion: reduce) { .book-card:hover .book-pic canvas { animation: none; } .book-progress span { transition: none; } }
+.book-mine { font: 700 .85rem var(--body); margin-left: auto; }
+.member-book { display: inline-block; margin-top: 8px; font-weight: 800; font-size: .9rem; }

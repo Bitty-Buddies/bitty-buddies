@@ -173,7 +173,7 @@
         head.appendChild(n);
       }
       sec.appendChild(head);
-      if (o.id === 'builds' && !(me && owns(list[0]))) {
+      if (o.id === 'builds' && !(me && (me.other || owns(list[0])))) {
         const p = document.createElement('p'); p.className = 'book-note';
         p.textContent = 'Had Bitty Buddies before version 1.2.0? You keep Builds free, nothing to do.';
         sec.appendChild(p);
@@ -187,7 +187,7 @@
       ul.className = 'book-grid';
       for (const e of list) ul.appendChild(card(e));
       sec.appendChild(ul);
-      if (o.buy && !(me && list.every(owns))) {
+      if (o.buy && !(me && (me.other || list.every(owns)))) {
         const a = document.createElement('a'); a.className = 'btn grass book-buy'; a.href = o.buy; a.textContent = o.buyText;
         sec.appendChild(a);
       }
@@ -225,12 +225,14 @@
   $('book-q').addEventListener('input', e => { filter.q = e.target.value.trim().toLowerCase(); apply(); });
 
   // ---------- your collection ----------
+  const count = (n, one, many) => `${(n || 0).toLocaleString('en-GB')} ${n === 1 ? one : many}`;
   function showMe() {
     const u = me.user;
     $('book-out').hidden = true;
     $('book-in').hidden = false;
     $('book-own').hidden = false;
-    $('book-name').textContent = `${u.discord ? u.discord.name : u.username}'s collection`;
+    $('book-name').textContent = me.other ? `${u.name}'s collection` : `${u.discord ? u.discord.name : u.username}'s collection`;
+    if (me.other) { document.title = `${u.name}'s Buddy Book · Bitty Buddies`; const back = document.createElement('a'); back.href = 'buddybook.html'; back.className = 'book-mine'; back.textContent = 'See your own'; $('book-name').after(back); }
     $('book-supporter').hidden = !me.packs.has('supporter');
     const real = entries.filter(e => !e.mystery);
     const got = real.filter(owns).length;
@@ -243,19 +245,33 @@
     const earned = Object.values(w.earned || {}).reduce((a, b) => a + b, 0);
     const spent = (w.owned || []).reduce((a, id) => a + (SHOP[id] ? SHOP[id].price : 0), 0);
     const stats = [
-      ['🪙', `${Math.max(0, earned - spent).toLocaleString('en-GB')} Buddy Bucks`],
-      ['💤', `${(s.naps || 0).toLocaleString('en-GB')} naps`],
-      ['⚽', `${(s.balls || 0).toLocaleString('en-GB')} balls fetched`],
-      ['⚔️', `${(s.battles || 0).toLocaleString('en-GB')} battles won`]
+      ...(me.other ? [] : [['🪙', `${Math.max(0, earned - spent).toLocaleString('en-GB')} Buddy Bucks`]]),
+      ['💤', count(s.naps, 'nap', 'naps')],
+      ['⚽', count(s.balls, 'ball fetched', 'balls fetched')],
+      ['⚔️', count(s.battles, 'battle won', 'battles won')]
     ];
     const ul = $('book-stats'); ul.textContent = '';
     for (const [icon, text] of stats) { const li = document.createElement('li'); const i = document.createElement('span'); i.setAttribute('aria-hidden', 'true'); i.textContent = icon; li.append(i, ' ', text); ul.appendChild(li); }
-    const fresh = !w.updated;
+    const fresh = !w.updated && !me.other;
     if (fresh) { const li = document.createElement('li'); li.className = 'book-hint'; li.textContent = 'Sign in to the app with this account to back up your buddies here.'; ul.appendChild(li); }
   }
 
+  // ?u=name shows another member's book (from the Members page). Otherwise it's your own.
+  const other = (new URLSearchParams(location.search).get('u') || '').trim().toLowerCase();
+  const keepsBuilds = (wallet, created) => wallet.keepBuilds === true
+    || (wallet.keepBuilds === undefined && !!created && Date.parse(created) < BUILDS_PAID_FROM);   // older app versions don't say, so go by when the account was made
   render();
-  if (token()) {
+  if (other && !token()) {
+    $('book-out').innerHTML = '';
+    $('book-out').append('Members\u2019 collections are for signed-in members. ', Object.assign(document.createElement('a'), { href: 'account.html', textContent: 'Sign in' }), ' to see it.');
+  } else if (other) {
+    call(`/account/book?u=${encodeURIComponent(other)}`).then(d => {
+      const wallet = d.wallet || {};
+      me = { user: d.user, packs: new Set(d.packs || []), owned: new Set(wallet.owned || []), keepBuilds: keepsBuilds(wallet, d.user.created), wallet, other: true };
+      render();
+      showMe();
+    }).catch(() => { $('book-out').textContent = 'That member\u2019s Buddy Book isn\u2019t available. They may have hidden themselves from the Members page.'; });
+  } else if (token()) {
     Promise.all([call('/account/me'), call('/account/bucks')]).then(([acc, b]) => {
       const live = (acc.keys || []).filter(k => !k.revoked);
       const wallet = b.wallet || {};
@@ -263,7 +279,7 @@
         user: acc.user,
         packs: new Set(live.flatMap(k => k.packs)),
         owned: new Set(wallet.owned || []),
-        keepBuilds: !!acc.user.created && Date.parse(acc.user.created) < BUILDS_PAID_FROM,
+        keepBuilds: keepsBuilds(wallet, acc.user.created),
         wallet
       };
       render();
