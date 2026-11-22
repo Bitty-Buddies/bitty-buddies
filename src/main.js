@@ -598,7 +598,7 @@ function spawnMenu(kind) {
   const lockedEntries = g => [
     { label: `${g.items.map(i => i.name).join(', ')}`, enabled: false },
     { type: 'separator' },
-    { label: 'Unlock with a licence key…', click: openLicenceWindow }
+    { label: 'Get this pack…', click: () => openShopWindow('packs') }
   ];
   const group = g => g.p.advent ? adventGroup(g, toEntry) : packUnlocked(g.p)
     ? { label: g.p.name, submenu: g.items.map(toEntry) }
@@ -730,7 +730,6 @@ function buildTrayMenu() {
       click: i => { settings.shareStats = i.checked; saveSettings(); if (i.checked) statsCheckIn(); }
     },
     { type: 'separator' },
-    { label: licence.status().active ? 'Licence keys…' : 'Enter licence key…', click: openLicenceWindow },
     ...(!ACCOUNT_API ? [] : account ? [{
       label: `Signed in as ${account.username || 'you'}`, submenu: [
         { label: 'Check for new packs', click: () => syncAccount({ announce: true }) },
