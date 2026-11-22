@@ -421,6 +421,14 @@
       if (has('critters', 'mossling')) a.put('critters', 'mossling', 104, G - Math.abs(Math.sin(t * 4 + 1)) * 4, { pose: 'idle', frame });
       if (has('critters', 'ember')) a.put('critters', 'ember', 200, G - Math.abs(Math.sin(t * 5 + 2)) * 5, { pose: 'idle', frame });
       if (has('critters', 'pip')) a.put('critters', 'pip', lerp(230, 175, span(t, 2, 10)), G, { pose: t > 2 && t < 10 ? 'walk' : 'idle', frame, flip: true });
+      // the newer critters: an owl dozing, a snail on a very long journey, the fox trotting the other way...
+      if (has('critters', 'owl')) a.put('critters', 'owl', 14, G, { pose: t % 8 < 5 ? 'sleep' : 'idle', frame });
+      if (has('critters', 'snail')) a.put('critters', 'snail', lerp(62, 92, t / 12), G, { pose: 'walk', frame });
+      if (has('critters', 'fox')) a.put('critters', 'fox', W + 30 - ((t * 26 + 90) % (W + 60)), G, { pose: 'walk', frame, flip: true });
+      if (has('critters', 'frog')) a.put('critters', 'frog', 126, G - Math.max(0, Math.sin(t * 3)) * 12, { pose: Math.sin(t * 3) > 0 ? 'walk' : 'idle', frame });
+      if (has('critters', 'hedgehog')) a.put('critters', 'hedgehog', 176 + Math.sin(t * 0.4) * 10, G, { pose: 'walk', frame, flip: Math.cos(t * 0.4) < 0 });
+      if (has('critters', 'squirrel')) a.put('critters', 'squirrel', 222, G - Math.abs(Math.sin(t * 7)) * 3, { pose: t % 4 < 2 ? 'idle' : 'sit', frame, flip: true });
+      if (has('critters', 'duck')) a.put('critters', 'duck', lerp(252, 192, span(t, 3, 11)), G, { pose: t > 3 && t < 11 ? 'walk' : 'idle', frame, flip: true });
       // butterflies
       for (const b of state.flies) { const x = ((t * 18 + b.p * 60) % (W + 20)) - 10, y = b.y + Math.sin(t * 3 + b.p) * 6, wing = Math.floor(t * 8 + b.p) % 2; a.rect(x, y, 1, 2, '#3A2A1A'); a.rect(x - 2, y - wing, 2, 2, b.c); a.rect(x + 1, y - wing, 2, 2, b.c); }
       // the odd heart pops up when someone gets a pat
@@ -452,11 +460,12 @@
       a.rect(0, G, W, H - G, mix('#6CBE4E', '#1E3A24', night)); a.rect(0, G, W, 2, mix('#54A03C', '#16301C', night));
       // the builds, glowing brighter as it gets dark
       glow(a, 120, G - 9, 30, '255,150,60', 0.4 + night * (0.9 + Math.sin(t * 9) * 0.1));
-      glow(a, 46, G - 14, 26, '170,120,255', 0.3 + night * 0.8);
-      glow(a, 196, G - 14, 22, '255,215,110', 0.3 + night * 0.8);
-      a.put('builds', 'shrine', 46, G, { frame });
+      glow(a, 40, G - 14, 26, '170,120,255', 0.3 + night * 0.8);
+      glow(a, 184, G - 14, 22, '255,215,110', 0.3 + night * 0.8);
+      const b = (key, x) => { if (has('builds', key)) a.put('builds', key, x, G, { frame }); };
+      b('windmill', 14); b('shrine', 40); b('well', 64); b('signpost', 84);
       a.put('builds', 'campfire', 120, G, { frame });
-      a.put('builds', 'lantern', 196, G, { frame });
+      b('fountain', 160); b('lantern', 184); b('stall', 208); b('postbox', 232);
       // sparks rising from the fire
       if (Math.random() < 0.3) state.sparks.push({ x: 120 + rand(-3, 3), y: G - 12, v: rand(10, 20), life: 0 });
       state.sparks = state.sparks.filter(s => (s.life += 1 / 60) < 1.4);
@@ -491,6 +500,7 @@
       for (let x = 70; x < 170; x += 6) a.rect(x, G + 3, 4, 2, '#8A7A66');                                             // path stones
       glow(a, 196, G - 26, 24, '176,124,255', 0.6 + Math.sin(t * 2) * 0.15);
       a.put('fantasy', 'tower', 196, G, { frame });
+      if (has('fantasy', 'treehouse')) a.put('fantasy', 'treehouse', 228, G, { frame });
       a.put('fantasy', 'burrow', 34, G, { frame });
       if (has('fantasy', 'forge')) { glow(a, 128, G - 8, 18, '255,140,60', 0.7 + Math.sin(t * 10) * 0.15); a.put('fantasy', 'forge', 128, G, { frame }); }
       // dwarf hammering at the forge, sparks flying
@@ -508,6 +518,15 @@
       if (t % 3 < 0.05 && state.lastCast !== Math.floor(t / 3)) { state.lastCast = Math.floor(t / 3); for (let i = 0; i < 14; i++) state.magic.push({ a: rand(0, Math.PI * 2), r: 0, v: rand(10, 22), life: 0 }); }
       state.magic = state.magic.filter(m => (m.life += 1 / 60) < 1.1);
       for (const m of state.magic) { const r = m.v * m.life; a.rect(166 + Math.cos(m.a) * r, G - 22 + Math.sin(m.a) * r, 1, 1, m.life < 0.5 ? '#FFFFFF' : '#B07CFF'); }
+      // the newer folk: the witch zooms over on her broom, everyone else gets on with village life
+      const f = (key, x, st) => { if (has('fantasy', key)) a.put('fantasy', key, x, G, { frame, ...st }); };
+      if (has('fantasy', 'witch')) { const wx = ((t * 34) % (W + 50)) - 25; a.put('fantasy', 'witch', wx, 34 + Math.sin(t * 2.4) * 6, { pose: 'fly', frame }); state.trail = (state.trail || []).filter(p => (p.life += 1 / 60) < 0.8); state.trail.push({ x: wx - 9, y: 32 + Math.sin(t * 2.4) * 6 + rand(-1, 1), life: 0 }); for (const p of state.trail) a.rect(p.x - p.life * 6, p.y, 1, 1, p.life < 0.4 ? '#FFE97A' : '#B07CFF'); }
+      f('druid', 56, { pose: 'idle' });
+      f('bard', 86, { pose: t % 4 < 2 ? 'idle' : 'sit' });
+      f('gnome', 140 + Math.sin(t * 0.8) * 8, { pose: 'walk', flip: Math.cos(t * 0.8) < 0 });
+      f('alchemist', 150, { pose: 'idle', flip: true });
+      f('viking', lerp(W + 20, 214, span(t, 3, 8)), { pose: t > 3 && t < 8 ? 'walk' : 'idle', flip: true });
+      f('healer', 20, { pose: 'idle' });
       // drifting magic motes
       for (const m of state.motes) { const k = (m.s + t * m.v) % 1; a.rect(m.x + Math.sin(t + m.x) * 4, G - k * G, 1, 1, m.c); }
     });
