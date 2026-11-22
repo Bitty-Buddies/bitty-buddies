@@ -736,9 +736,8 @@ function buildTrayMenu() {
         { label: 'Sign out', click: signOut }
       ]
     }] : [{ label: 'Sign in…', click: openSignInWindow }]),
-    readyVersion
-      ? { label: `🎉 Restart to update to v${readyVersion}`, click: () => setImmediate(() => autoUpdater.quitAndInstall()) }
-      : { label: 'Check for updates…', click: () => checkForUpdates(true) },
+    // Updates check and download by themselves; the tray only shows up once one is ready to install.
+    ...(readyVersion ? [{ label: `🎉 Restart to update to v${readyVersion}`, click: () => setImmediate(() => autoUpdater.quitAndInstall()) }] : []),
     ...(packUnlocked(PACKS.find(p => p.id === 'tester') || {}) && PACKS.some(p => p.id === 'tester') ? [{
       label: '🧪 Get test versions', type: 'checkbox', checked: !!settings.testVersions, click: i => setTesting(i.checked)
     }] : []),
