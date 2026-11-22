@@ -713,3 +713,4 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
 @media (prefers-reduced-motion: reduce) { .org-card { transition: none; } .org-card:hover { transform: none; } }
 
 .redeem-hint { margin: 0 0 14px; text-align: center; }
+.buy-note { margin: .6rem 0 0; font-size: .9rem; }
