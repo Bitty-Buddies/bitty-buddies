@@ -217,6 +217,16 @@
       render(d); say(d.message, true);
     });
   });
+  $('redeem-form').addEventListener('submit', e => {
+    e.preventDefault();
+    busy(e.submitter || $('redeem-form').querySelector('button'), async () => {
+      const d = await call('/account/redeem', 'POST', { code: $('redeem-code').value });
+      $('redeem-code').value = '';
+      render(d);
+      say(d.again ? `That code was already redeemed. Your ${d.packNames.join(', ')} key is below.`
+                  : `Thank you! Your ${d.packNames.join(', ')} key is below. If you're signed in to the app, it unlocks by itself.`, true);
+    });
+  });
   $('del-form').addEventListener('submit', e => {
     e.preventDefault();
     busy(e.submitter || $('del-form').querySelector('button'), async () => {

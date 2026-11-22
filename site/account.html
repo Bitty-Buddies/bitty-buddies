@@ -27,6 +27,7 @@
 
         <!-- signed out -->
         <div class="auth-card" id="signed-out" hidden>
+          <p class="auth-note redeem-hint">Bought a pack? Sign in, or make a free account, to redeem the code from your receipt email.</p>
           <a class="btn discord auth-discord" id="discord-signin" href="#">Continue with Discord</a>
           <p class="auth-or"><span>or use a username</span></p>
           <div class="auth-tabs" role="tablist">
@@ -86,6 +87,16 @@
                     </div>
                   </div>
                 </div>
+              </section>
+
+              <section class="panel" id="redeem-panel">
+                <h2>Redeem a purchase</h2>
+                <p>Bought a pack? Paste the code from your receipt email. Your key is added to this account straight away.</p>
+                <form class="option-form" id="redeem-form">
+                  <label for="redeem-code">Purchase code</label>
+                  <input id="redeem-code" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="ABCDE-FGHIJ-KLMNO-PQRST" required>
+                  <button class="btn grass small" type="submit">Redeem</button>
+                </form>
               </section>
 
               <section class="panel">
