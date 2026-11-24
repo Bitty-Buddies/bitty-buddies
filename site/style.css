@@ -684,3 +684,10 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
 @media (prefers-reduced-motion: reduce) { .book-card:hover .book-pic canvas { animation: none; } .book-progress span { transition: none; } }
 .book-mine { font: 700 .85rem var(--body); margin-left: auto; }
 .member-book { display: inline-block; margin-top: 8px; font-weight: 800; font-size: .9rem; }
+
+/* donate */
+.donate-btn { display: inline-block; margin-top: 12px; padding: 7px 14px; font: 700 .95rem var(--display); color: #2E345C; background: #FFC439; border: 3px solid #2E345C; box-shadow: 3px 3px 0 rgba(0,0,0,.35); text-decoration: none; }
+.donate-btn:hover, .donate-btn:focus-visible { background: #FFD66B; }
+.pack-card.donate { background: #FFF4D6; }
+.btn.donate-cta { background: #FFC439; color: #2E345C; text-shadow: none; }
+.btn.donate-cta:hover, .btn.donate-cta:focus-visible { background: #FFD66B; }

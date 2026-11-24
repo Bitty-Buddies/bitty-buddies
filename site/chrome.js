@@ -14,8 +14,10 @@
     { id: 'account', label: 'Account', href: 'account.html' }
     // { id: 'faq', label: 'FAQ', href: 'faq.html' },
   ];
+  const DONATE = 'https://www.paypal.me/BittyBuddies';
   const ELSEWHERE = [
-    { label: 'Discord', href: DISCORD }
+    { label: 'Discord', href: DISCORD },
+    { label: 'Donate with PayPal', href: DONATE }
   ];
 
   const page = document.body.dataset.page || '';
@@ -78,6 +80,7 @@
         <div class="foot-about">
           <a class="brand" href="./"><img src="icon.png" alt="" width="24" height="24">Bitty Buddies</a>
           <p>Tiny pixel pets for your Windows desktop. Free to download, with extra packs to unlock.</p>
+          <a class="donate-btn" href="${DONATE}" rel="noopener" target="_blank">♥ Donate with PayPal</a>
         </div>
         <nav class="foot-col" aria-label="Pages"><h2>Pages</h2>${TABS.map(tab).join('')}</nav>
         <nav class="foot-col" aria-label="Community"><h2>Community</h2>${ELSEWHERE.map(out).join('')}</nav>
