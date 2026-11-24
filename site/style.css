@@ -691,3 +691,4 @@ h3 { font: 700 1.4rem var(--display); margin: 2.2rem 0 .8rem; display: flex; ali
 .pack-card.donate { background: #FFF4D6; }
 .btn.donate-cta { background: #FFC439; color: #2E345C; text-shadow: none; }
 .btn.donate-cta:hover, .btn.donate-cta:focus-visible { background: #FFD66B; }
+.foot-about .donate-note { margin: .5rem 0 0; font-size: .85rem; color: #A9AFB9; max-width: 22rem; }
