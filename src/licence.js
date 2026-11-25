@@ -6,6 +6,8 @@
 // replaces their old one. Older single-pack keys still work.
 // On launch (and every 30 minutes) it fetches revoked.json from GitHub. Revoked keys are
 // kept but paused, so if a key is restored it starts working again on the next check.
+// revoked.json can also list packs taken off a key ("removed": { id: [packs] }): the key keeps
+// working for its other packs, and ticking the pack again in the Admin Tool gives it back.
 const { app } = require('electron');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -54,12 +56,14 @@ function addKey(entry) {
   return better;
 }
 let revokedCache = [];
+let removedCache = {};   // key id -> packs taken off that key
 
 function load() {
   keys = [];
   try {
     const data = JSON.parse(fs.readFileSync(licenceFile(), 'utf8'));
     revokedCache = Array.isArray(data.revokedCache) ? data.revokedCache : [];
+    removedCache = data.removedCache && typeof data.removedCache === 'object' ? data.removedCache : {};
     const raw = Array.isArray(data.keys) ? data.keys : data.key ? [data.key] : [];
     for (const key of raw) {
       const v = verify(key);
@@ -69,7 +73,7 @@ function load() {
 }
 
 function save() {
-  fs.writeFileSync(licenceFile(), JSON.stringify({ keys: keys.map(k => k.key), revokedCache }), { mode: 0o600 });
+  fs.writeFileSync(licenceFile(), JSON.stringify({ keys: keys.map(k => k.key), revokedCache, removedCache }), { mode: 0o600 });
 }
 
 async function getList(url, headers) {
@@ -77,7 +81,12 @@ async function getList(url, headers) {
     const res = await fetch(url, { cache: 'no-store', headers, signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const data = await res.json();
-    return Array.isArray(data.revoked) ? data.revoked : null;
+    if (!Array.isArray(data.revoked)) return null;
+    const removed = {};
+    if (data.removed && typeof data.removed === 'object') {
+      for (const [id, packs] of Object.entries(data.removed)) if (Array.isArray(packs)) removed[id] = packs.map(String);
+    }
+    return { revoked: data.revoked, removed };
   } catch { return null; }
 }
 
@@ -88,7 +97,12 @@ async function fetchRevoked() {
   return list; // null when offline: keep the current unlocks
 }
 
-const live = () => keys.filter(k => !revokedCache.includes(k.id));
+// Live keys, each with only the packs it still unlocks.
+const live = () => keys.filter(k => !revokedCache.includes(k.id))
+  .map(k => ({ ...k, packs: k.packs.filter(p => !(removedCache[k.id] || []).includes(p)) }))
+  .filter(k => k.packs.length);
+const fingerprint = () => live().map(k => k.id + ':' + k.packs.join(',')).join(';');
+const take = r => { revokedCache = r.revoked; removedCache = r.removed; };
 
 module.exports = {
   load,
@@ -103,7 +117,7 @@ module.exports = {
     const v = verify(key);
     if (!v) throw new Error('That licence key isn’t valid. Check you copied all of it.');
     const revoked = await fetchRevoked();
-    if (revoked) revokedCache = revoked;
+    if (revoked) take(revoked);
     if (revokedCache.includes(v.id)) { save(); throw new Error('This licence key has been revoked.'); }
     const old = keys.find(k => k.id === v.id);
     if (old && old.packs.length >= v.packs.length && old.date >= v.date) { save(); throw new Error('That key is already active on this computer.'); }
@@ -114,15 +128,15 @@ module.exports = {
     return fresh.length ? fresh : v.packs;
   },
 
-  // Returns 'ok', 'none', 'offline' (nothing changed) or 'changed' (a key was revoked or restored).
+  // Returns 'ok', 'none', 'offline' (nothing changed) or 'changed' (a key was revoked or restored, or a pack taken off or given back).
   async revalidate() {
     if (!keys.length) return 'none';
     const revoked = await fetchRevoked();
     if (!revoked) return 'offline';
-    const before = live().map(k => k.id).join();
-    revokedCache = revoked;
+    const before = fingerprint();
+    take(revoked);
     save();
-    return live().map(k => k.id).join() === before ? 'ok' : 'changed';
+    return fingerprint() === before ? 'ok' : 'changed';
   },
 
   async remove(id) {
