@@ -3,7 +3,8 @@
 // installed. The tray menu's "Count me in the user stats" turns it off.
 const pkg = require('../package.json');
 
-const BASE = (pkg.bitty && pkg.bitty.statsApi) || 'https://abacus.jasoncameron.dev';
+// Counted on the Bitty Admin server (Cloudflare), not a third-party service.
+const BASE = (pkg.bitty && pkg.bitty.statsApi) || 'https://bitty-admin.reece-feetenby.workers.dev/stats';
 const NS = (pkg.bitty && pkg.bitty.statsNamespace) || 'bitty-buddies';
 
 const pad = n => String(n).padStart(2, '0');
