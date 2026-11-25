@@ -12,9 +12,9 @@
   const GRAVITY = 2200;
   const REG = {};            // "pack/item" -> definition
   let things = [];
-  let scale = 4, hidden = false, ready = false, uidSeq = 1, mischief = true;
+  let scale = 4, hidden = false, ready = false, uidSeq = 1, mischief = true, gore = false;
   let ignoring = true, drag = null, clock = 0, windowGrab = false;
-  const particles = [], battles = [], treats = [], frames = new Map();
+  const particles = [], battles = [], treats = [], frames = new Map(), splats = [];
   let ball = null, partyUntil = 0, conga = null;
   const mouse = { x: -9999, y: -9999, vx: 0, vy: 0, t: -99, seen: false, lastT: 0 };
   const hover = { t: null, since: 0, nextHeart: 0 };
@@ -52,10 +52,11 @@
   }
 
   function frameFor(t, st) {
-    const key = [t.id, st.pose, st.frame, st.blink ? 1 : 0, t.dir, st.power || '', st.step || 0, st.net === false ? 0 : 1, st.seed || 0, st.alert ? 1 : 0].join('|');
+    const key = [t.id, st.pose, st.frame, st.blink ? 1 : 0, t.dir, st.power || '', st.step || 0, st.net === false ? 0 : 1, st.seed || 0, st.alert ? 1 : 0, t.infected ? 1 : 0].join('|');
     let f = frames.get(key);
     if (!f) {
       let g = PX.drawItem(t.def, st);
+      if (t.infected) g = g.map(row => row.map(zombify));
       if (t.dir < 0) g = g.map(row => row.slice().reverse());
       const oc = document.createElement('canvas');
       oc.width = t.def.w; oc.height = t.def.h;
@@ -65,6 +66,77 @@
       frames.set(key, f);
     }
     return f;
+  }
+
+  // ---------- Outbreak: zombies bite, bitten buddies turn green, only the Field Medic can cure them ----------
+  const zcols = new Map();
+  function zombify(c) {
+    if (!c || c[0] !== '#' || c.length !== 7) return c;
+    let z = zcols.get(c);
+    if (!z) {
+      const n = parseInt(c.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+      const lum = 0.3 * r + 0.59 * g + 0.11 * b;
+      const hex = v => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0');
+      z = '#' + hex(lum * 0.62 + r * 0.12) + hex(lum * 0.9 + 34) + hex(lum * 0.5 + b * 0.1);
+      zcols.set(c, z);
+    }
+    return z;
+  }
+  const canCatch = d => d && d.kind !== 'build' && !d.zombie && !d.immune;
+  const isBiter = t => !t.isBuild && (t.def.zombie || t.infected);
+  const NOBITE = ['held', 'ride', 'leap', 'carried', 'climb', 'cling', 'fly', 'winJump', 'tug', 'battle', 'conga', 'fall'];
+  // Zombies get tangled up in barbed wire.
+  function onWire(t) {
+    const cx = t.x + t.wpx() / 2;
+    const w = things.find(b => b.isBuild && b.def.slows && Math.abs(b.x + b.wpx() / 2 - cx) < b.wpx() / 2);
+    if (w && Math.random() < 0.004) t.say('!', 0.8);
+    return !!w;
+  }
+  // Soldiers and the army dog fend off a zombie that's hunting nearby.
+  function defend(z) {
+    const zx = z.x + z.wpx() / 2;
+    const d = things.find(g => g.def.defender && !g.infected && !LOCKED.includes(g.state) && g.state !== 'sleep' &&
+      Math.abs(g.x + g.wpx() / 2 - zx) < 300 * (scale / 4) && !(g.shotAt > clock - 4));
+    if (!d) return false;
+    d.shotAt = clock;
+    const gx = d.x + d.wpx() / 2;
+    d.dir = zx > gx ? 1 : -1; d.set('idle', 1.2);
+    if (d.def.barks) { d.say('🐕', 1.4); d.lunge = 0.3; }
+    else {
+      d.say('💥', 1);
+      const y0 = d.top() + d.hpx() * 0.55, y1 = z.top() + z.hpx() * 0.45;
+      for (let k = 0; k < 6; k++) { const f = k / 6; puff('spark', gx + (zx - gx) * f, y0 + (y1 - y0) * f, { life: 0.12 + f * 0.1, col: '#FFE066' }); }
+    }
+    puff('pow', zx, z.top() + z.hpx() * 0.4, { life: 0.35 });
+    bleed(zx, z.top() + z.hpx() * 0.4, d.def.barks ? 0 : 6);
+    z.prey = null; z.set('dizzy', 2.4); z.say(d.def.barks ? '😱' : '💫', 1.4);
+    z.x = clamp(z.x - d.dir * -1 * 3 * scale, 0, Math.max(0, W() - z.wpx()));
+    return true;
+  }
+  // Helicopters drop a supply crate (a treat) as they fly over.
+  function dropSupply(h) {
+    const kinds = Object.keys(TREATS).filter(k => !TREATS[k].mitty);
+    if (!kinds.length) return;
+    treats.push({ kind: pick(kinds), x: clamp(h.x + h.wpx() / 2, 10, W() - 10), y: h.y, vy: 0, landed: false, claimed: null, life: 60 });
+    h.say('📦', 1.4);
+  }
+  function findPrey(z) {
+    return things.filter(p => p !== z && !p.isBuild && canCatch(p.def) && !p.infected && !NOBITE.includes(p.state) && Math.abs(p.x - z.x) < 900)
+      .sort((a, b) => Math.abs(a.x - z.x) - Math.abs(b.x - z.x))[0] || null;
+  }
+  function findSick(m) {
+    return things.filter(p => p.infected && !things.some(o => o !== m && o.patient === p && o.state === 'goCure'))
+      .sort((a, b) => Math.abs(a.x - m.x) - Math.abs(b.x - m.x))[0] || null;
+  }
+  // Gore (off unless turned on in the tray): blood drops fly, land and leave splats that fade away.
+  function bleed(x, y, n) {
+    if (!gore) return;
+    for (let i = 0; i < n; i++) puff('blood', x, y, { vx: rand(-110, 110), vy: rand(-180, -40), g: 900, life: 2, size: rand(0.6, 1.2) });
+  }
+  function splat(x, size) {
+    if (!gore) return;
+    splats.push({ x, w: size, born: clock, life: rand(18, 30), dots: Array.from({ length: 3 + Math.floor(size) }, () => [rand(-size, size), rand(0, 1)]) });
+    if (splats.length > 80) splats.shift();
   }
 
   // ---------- particles ----------
@@ -83,8 +155,8 @@
   }
 
   // States where a pet is doing its own thing and shouldn't be pulled into games.
-  const LOCKED = ['held', 'ride', 'leap', 'climb', 'cling', 'battle', 'fall', 'dizzy', 'cheer', 'eat', 'love', 'carried', 'goGrab', 'haul', 'goWin', 'winJump', 'tug', 'goFix', 'fix', 'fly', 'cast'];
-  const MOVERS = ['walk', 'chase', 'fetch', 'snack', 'conga', 'toWall', 'goGrab', 'haul', 'goWin', 'goFix', 'fly'];
+  const LOCKED = ['held', 'ride', 'leap', 'climb', 'cling', 'battle', 'fall', 'dizzy', 'cheer', 'eat', 'love', 'carried', 'goGrab', 'haul', 'goWin', 'winJump', 'tug', 'goFix', 'fix', 'fly', 'cast', 'hunt', 'bite', 'goCure', 'cure'];
+  const MOVERS = ['walk', 'chase', 'fetch', 'snack', 'conga', 'toWall', 'goGrab', 'haul', 'goWin', 'goFix', 'fly', 'hunt', 'goCure'];
 
   // ---------- things (pets + builds) ----------
   class Thing {
@@ -108,13 +180,15 @@
       this.lunge = 0; this.knockT = 0; this.offX = 0;
       this.carry = null; this.goal = 0; this.carrier = null; this.win = null;
       this.job = null;                          // engineers: the kit they're off to fix
+      this.infected = !!opts.zombie && canCatch(this.def);   // bitten by a zombie (stays that way until the medic cures it)
+      this.prey = null; this.patient = null; this.dripT = rand(0.5, 2);
       if (this.def.power === 'device') {        // Server Room kit starts unplugged
         this.power = 'off'; this.bootT = 0; this.faultT = rand(60, 150); this.pwr = null; this.lan = null; this.fixer = null;
       }
     }
     wpx() { return this.def.w * scale; }
     hpx() { return this.def.h * scale; }
-    walkSpeed() { return this.def.speed * (scale / 4); }
+    walkSpeed() { return this.def.speed * (scale / 4) * (this.infected ? 0.6 : 1) * (isBiter(this) && onWire(this) ? 0.3 : 1); }
     runSpeed() { return Math.max(70, this.def.speed * 2.4) * (scale / 4); }
     clamp() {
       if (['climb', 'cling', 'ride'].includes(this.state)) return;
@@ -148,6 +222,8 @@
       if (this.state === 'fly' && own.includes('fly')) { pose = 'fly'; frame = this.frame; }
       if (this.state === 'cast' && own.includes('cast')) { pose = 'cast'; frame = this.timer < 1.0 ? 1 : 0; }
       if (this.state === 'fix') pose = 'fix';
+      if (this.state === 'bite') { pose = 'walk'; frame = 1; }
+      if (this.state === 'cure') pose = 'idle';
       if (this.state === 'dizzy') blink = true;
       if (this.def.move === 'hop' && this.moving()) frame = Math.abs(Math.sin(this.hop * Math.PI)) < 0.25 ? 1 : 0;
       if (['fall', 'held', 'ride', 'leap', 'cling', 'winJump', 'tug'].includes(this.state)) frame = 0;
@@ -186,12 +262,22 @@
         if (broken) { this.set('goFix', 25); this.job = broken; broken.fixer = this; this.say('!', 1.2); return; }
       }
 
-      if (this.def.flies && Math.random() < 0.18) return startFly(this);        // the witch takes to the sky
+      if (this.def.curer) {                     // someone's been bitten? the medic's on it
+        const sick = findSick(this);
+        if (sick) { this.set('goCure', 30); this.patient = sick; this.say('!', 1.2); return; }
+      }
+      if (mischief && isBiter(this) && Math.random() < (this.def.zombie ? 0.35 : 0.25)) {
+        const prey = findPrey(this);
+        if (prey) { this.set('hunt', 20); this.prey = prey; this.say('🧠', 1.6); return; }
+      }
+      if (this.infected && Math.random() < 0.2) this.say(pick(['🧠', '…']), 1.6);
+
+      if (this.def.flies && Math.random() < (this.def.vehicle ? 0.45 : 0.18)) return startFly(this);        // the witch takes to the sky
       if (this.def.caster && Math.random() < 0.16) return this.set('cast', 1.8); // the wizard casts a spell
 
       const r = Math.random();
       if (this.nearBuild() && r < 0.5) return this.set(Math.random() < 0.5 ? 'sit' : 'sleep', rand(6, 14));
-      if (mischief) {
+      if (mischief && !this.def.vehicle) {
         if (r < 0.08 && mouse.seen && clock - mouse.t < 5) { this.say('!'); return this.set('chase', rand(5, 9)); }
         if (r < 0.13) { this.dir = this.x < W() / 2 ? -1 : 1; return this.set('toWall', 15); }
         if (r < 0.19 && startGrab(this)) return;
@@ -237,6 +323,11 @@
       }
       if (this.win && !this.win.pending && !['goWin', 'winJump', 'tug'].includes(S)) { api.releaseWindow(); this.win = null; }
       if (S === 'held' || S === 'battle' || S === 'conga') return;
+      if (gore && isBiter(this) && this.moving() && this.y >= H() - 1) {   // zombies leave a drippy trail
+        this.dripT -= dt;
+        if (this.dripT <= 0) { this.dripT = rand(0.6, 1.6); splat(this.x + this.wpx() * (this.dir > 0 ? 0.3 : 0.7), rand(0.8, 1.6) * scale); }
+      }
+      if (S === 'hunt' || S === 'goCure' || S === 'bite' || S === 'cure') return outbreakStep(this, dt);
 
       if (S === 'goWin') {                     // run to just under the window's bottom edge
         const w = this.win;
@@ -335,7 +426,8 @@
           if (Math.random() < dt * 0.6) this.flyY = ground - rand(50, Math.min(260, ground * 0.5));   // swoop up or down now and then
           const want = this.flyY + Math.sin(clock * 2.4 + this.uid) * 6 * scale;
           this.y += (want - this.y) * Math.min(1, dt * 1.6);
-          if (Math.random() < dt * 14) puff('spark', this.x + (this.dir > 0 ? 0 : this.wpx()), this.y - 3 * scale, { vy: rand(-10, 30), vx: -this.dir * rand(20, 60), life: rand(0.4, 0.8), col: pick(['#B67CF0', '#FFD84A', '#E7D6FF']) });
+          if (this.def.drops && Math.random() < dt * 0.12) dropSupply(this);
+          if (!this.def.vehicle && Math.random() < dt * 14) puff('spark', this.x + (this.dir > 0 ? 0 : this.wpx()), this.y - 3 * scale, { vy: rand(-10, 30), vx: -this.dir * rand(20, 60), life: rand(0.4, 0.8), col: pick(['#B67CF0', '#FFD84A', '#E7D6FF']) });
         } else {                                                  // glide down to land
           this.x += this.dir * this.runSpeed() * 0.5 * dt;
           this.x = clamp(this.x, 0, maxX);
@@ -575,6 +667,53 @@
       if (d.pwr) drawCable(portX(d.pwr.src, 'port'), portX(d, 'port'), d.pwr.prog, '#15171C', 2);
       if (d.lan) drawCable(portX(d.lan.src, 'lan'), portX(d, 'lan'), d.lan.prog, '#3C74E0', 3);
     }
+  }
+
+  // Zombie chases its prey and bites; the medic runs to a bitten buddy and cures them.
+  function outbreakStep(t, dt) {
+    const S = t.state;
+    t.timer -= dt;
+    if (S === 'bite' || S === 'cure') {
+      const p = S === 'bite' ? t.prey : t.patient;
+      if (!t.done && t.timer < (S === 'bite' ? 0.5 : 0.6)) {
+        t.done = true;
+        if (p && things.includes(p)) {
+          const px = p.x + p.wpx() / 2;
+          if (S === 'bite' && canCatch(p.def) && !p.infected) {
+            t.lunge = 0.3; t.say('😋', 1.4);
+            p.infected = true; p.say('🧟', 2.2);
+            for (let k = 0; k < 8; k++) puff('spark', px, p.top() + p.hpx() * 0.4, { vx: rand(-90, 90), vy: rand(-110, -20), g: 200, life: 0.7, col: pick(['#8DB87A', '#B8E08A', '#6A9258']) });
+            bleed(px, p.top() + p.hpx() * 0.4, 12); splat(px, rand(2.5, 4) * scale);
+            report();
+          } else if (S === 'cure' && p.infected) {
+            p.infected = false; heart(p); p.say('❤', 1.8); t.say('💉', 1.4);
+            for (let k = 0; k < 8; k++) puff('spark', px, p.top() + p.hpx() * 0.3, { vx: rand(-80, 80), vy: rand(-120, -30), g: 150, life: 0.8, col: pick(['#FFFFFF', '#FF7A8A', '#7FE8FF']) });
+            report();
+          }
+        }
+      }
+      if (t.timer <= 0) { t.done = false; t.prey = null; t.patient = null; t.set(S === 'cure' ? 'cheer' : 'idle', S === 'cure' ? 1.4 : 1.5); }
+      return;
+    }
+    const tgt = S === 'hunt' ? t.prey : t.patient;
+    const ok = tgt && things.includes(tgt) && (S === 'hunt' ? !tgt.infected && canCatch(tgt.def) && !NOBITE.includes(tgt.state) : tgt.infected);
+    if (!ok || t.timer <= 0) { t.prey = null; t.patient = null; return t.next(); }
+    if (S === 'hunt' && Math.random() < dt * 0.9 && defend(t)) return;
+    const dx = (tgt.x + tgt.wpx() / 2) - (t.x + t.wpx() / 2);
+    const reach = (t.wpx() + tgt.wpx()) / 2 - 5 * scale;
+    if (Math.abs(dx) > Math.max(2 * scale, reach)) {
+      t.dir = Math.sign(dx) || 1;
+      t.x = clamp(t.x + t.dir * (S === 'hunt' ? t.walkSpeed() * 1.7 : t.runSpeed()) * dt, 0, Math.max(0, W() - t.wpx()));
+      if (S === 'hunt' && Math.abs(dx) < 150 * (scale / 4) && !(tgt.fleeing > clock) && !LOCKED.includes(tgt.state) && tgt.state !== 'sleep') {
+        tgt.fleeing = clock + 5;                 // spotted it! run away
+        tgt.say('😱', 1.4); tgt.set('walk', rand(1.5, 3)); tgt.dir = Math.sign(dx) || 1;
+      }
+      return;
+    }
+    t.dir = Math.sign(dx) || t.dir;
+    t.done = false;
+    if (S === 'hunt') { t.state = 'bite'; t.timer = 1; tgt.set('dizzy', 2.6); tgt.dir = -t.dir; }
+    else { t.state = 'cure'; t.timer = 1.6; tgt.set('sit', 2.4); }
   }
 
   // ---------- games ----------
@@ -896,7 +1035,7 @@
   function report() {
     api.thingsChanged(things.map(t => t.isBuild
       ? { id: t.id, x: t.x / Math.max(1, W() - t.wpx()) }
-      : (t.hat ? { id: t.id, hat: t.hat } : { id: t.id })));
+      : Object.assign({ id: t.id }, t.hat ? { hat: t.hat } : {}, t.infected ? { zombie: true } : {})));
   }
 
   // ---------- drawing ----------
@@ -985,6 +1124,16 @@
       ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
     }
 
+    for (let i = splats.length - 1; i >= 0; i--) {      // gore: splats on the ground, fading out
+      const sp = splats[i], age = clock - sp.born;
+      if (age > sp.life) { splats.splice(i, 1); continue; }
+      ctx.globalAlpha = Math.min(1, (sp.life - age) / 4) * 0.9;
+      ctx.fillStyle = '#8E1A1A';
+      ctx.fillRect(Math.round(sp.x - sp.w), H() - Math.max(1, scale * 0.5), Math.round(sp.w * 2), Math.max(1, scale * 0.5));
+      ctx.fillStyle = '#B82A2A';
+      for (const [dx, k] of sp.dots) ctx.fillRect(Math.round(sp.x + dx), H() - scale * (0.5 + k * 0.5), scale * 0.5, scale * 0.5);
+      ctx.globalAlpha = 1;
+    }
     drawCables();
 
     for (const tr of treats) {
@@ -1046,6 +1195,7 @@
           pattern(['X'], p.x, p.y - 0.5 * s, s, '#FF7A2E');
           break;
         }
+        case 'blood': { const sz = Math.max(1, Math.round(px * p.size)); ctx.fillStyle = '#A81E1E'; ctx.fillRect(Math.round(p.x), Math.round(p.y), sz, sz); break; }
         case 'dust': ctx.fillStyle = '#C9C2B8'; ctx.fillRect(Math.round(p.x), Math.round(p.y), px, px); break;
         case 'spark': ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), px, px); break;
         case 'smoke': { const k = p.t / p.life, sz = Math.round(px * (1 + k * 2)); ctx.fillStyle = `rgba(90,94,104,${0.55 * (1 - k)})`; ctx.fillRect(Math.round(p.x - sz / 2), Math.round(p.y - sz / 2), sz, sz); break; }
@@ -1191,11 +1341,12 @@
   api.on('init', async d => {
     scale = d.scale || 4;
     mischief = d.mischief !== false;
+    gore = !!d.gore;
     windowGrab = !!d.windowGrab;
     await loadPacks(d.packFiles || []);
     resize();
     setHidden(d.hidden);
-    things = (d.things || []).filter(s => REG[s.id]).map(s => new Thing(s.id, { x: s.x, hat: s.hat }));
+    things = (d.things || []).filter(s => REG[s.id]).map(s => new Thing(s.id, { x: s.x, hat: s.hat, zombie: s.zombie }));
     setSnow(d.snow);
     ready = true;
   });
@@ -1213,6 +1364,7 @@
   api.on('set-scale', v => { scale = v; things.forEach(t => t.clamp()); });
   api.on('set-hidden', setHidden);
   api.on('set-mischief', v => { mischief = !!v; });
+  api.on('set-gore', v => { gore = !!v; if (!gore) { splats.length = 0; for (let i = particles.length - 1; i >= 0; i--) if (particles[i].kind === 'blood') particles.splice(i, 1); } });
   api.on('set-snow', setSnow);
   // Hats for everyone at once (null takes them all off).
   api.on('set-hats', hat => { for (const p of pets()) p.hat = hat && OUTFITS[hat] ? hat : null; report(); });
@@ -1242,6 +1394,15 @@
     } else if (action === 'outage') {
       const live = things.filter(k => k.power === 'on');
       if (live.length) breakKit(pick(live));
+    } else if (action === 'outbreak') {        // every zombie goes hunting at once
+      for (const z of things.filter(t => isBiter(t) && !LOCKED.includes(t.state))) {
+        const p = findPrey(z);
+        if (p) { z.set('hunt', 25); z.prey = p; z.say('🧠', 1.6); }
+      }
+    } else if (action === 'supplydrop') {
+      const h = things.find(t => t.def.drops && !LOCKED.includes(t.state));
+      if (h) { startFly(h); setTimeout(() => { if (things.includes(h) && h.state === 'fly') dropSupply(h); }, 1500); }
+      else { dropTreats(3); }
     } else if (action === 'ball') throwBall();
     else if (action === 'treats') dropTreats(3);
     else if (action === 'feed-chocolate') feedFavourite('chocolate');
@@ -1275,6 +1436,8 @@
     else if (action === 'climb') { t.dir = t.x < W() / 2 ? -1 : 1; t.set('toWall', 15); }
     else if (action === 'fly') startFly(t);
     else if (action === 'cast') t.set('cast', 1.8);
+    else if (action === 'bite') { const p = isBiter(t) && findPrey(t); if (p) { t.set('hunt', 25); t.prey = p; t.say('🧠', 1.6); } else t.say('?', 1.2); }
+    else if (action === 'cure') { const p = t.def.curer && findSick(t); if (p) { t.set('goCure', 30); t.patient = p; t.say('!', 1.2); } else t.say('?', 1.2); }
     else if (action === 'hat-off') { t.hat = null; report(); }
     else if (action.startsWith('hat:')) { const h = action.slice(4); if (OUTFITS[h]) { t.hat = h; heart(t); report(); } }
     else if (action === 'hat-santa') { t.hat = 'santa'; heart(t); report(); }
@@ -1524,6 +1687,7 @@
       p.t += dt;
       p.vy += p.g * dt;
       p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.kind === 'blood' && p.y >= H() - 1) { splat(p.x, p.size * scale * 0.7); particles.splice(i, 1); continue; }
       if (p.t >= p.life || (p.kind === 'confetti' && p.y > H())) particles.splice(i, 1);
     }
     draw();

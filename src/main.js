@@ -22,12 +22,13 @@ const PACKS = PACK_FILES.map(file => ({ file, ...require(path.join(__dirname, 'p
 const ITEMS = {};
 for (const p of PACKS) {
   for (const [key, it] of Object.entries(p.items)) {
-    ITEMS[`${p.id}/${key}`] = { id: `${p.id}/${key}`, pack: p, name: it.name, blurb: it.blurb || '', kind: it.kind || 'pet', day: it.day || 0, flies: !!it.flies, caster: !!it.caster };
+    ITEMS[`${p.id}/${key}`] = { id: `${p.id}/${key}`, pack: p, name: it.name, blurb: it.blurb || '', kind: it.kind || 'pet', day: it.day || 0, flies: !!it.flies, caster: !!it.caster, zombie: !!it.zombie, curer: !!it.curer, vehicle: !!it.vehicle };
   }
 }
 
 // Packs with `licensed: true` need a valid licence key that covers them.
-const packUnlocked = p => !p.licensed || licence.isUnlocked(p.id) || (p.id === 'builds' && settings.keepBuilds);
+// `testing: true` packs are open to Dev/Beta key holders until they're published.
+const packUnlocked = p => !p.licensed || licence.isUnlocked(p.id) || (p.id === 'builds' && settings.keepBuilds) || (p.testing && licence.isUnlocked('tester'));
 // Bitty Shop items (pack with `shop: true`) unlock one by one when bought with Buddy Bucks.
 const SHOP_ITEM = Object.fromEntries(bucks.CATALOGUE.filter(c => c.item).map(c => [c.item, c.id]));
 const shopOwned = id => !SHOP_ITEM[id] || (wallet && wallet.owned.includes(SHOP_ITEM[id]));
@@ -39,7 +40,7 @@ const itemUnlocked = id => !!ITEMS[id] && packUnlocked(ITEMS[id].pack) && dayOpe
 const unlockedPackFiles = () => PACKS.filter(packUnlocked).map(p => p.file);
 
 // ---------- settings ----------
-const DEFAULTS = { things: [{ id: 'critters/pup' }, { id: 'critters/kit' }], scale: 4, hidden: false, mischief: true, shareStats: true, stats: {}, snow: 'auto' };
+const DEFAULTS = { things: [{ id: 'critters/pup' }, { id: 'critters/kit' }], scale: 4, hidden: false, mischief: true, gore: false, shareStats: true, stats: {}, snow: 'auto' };
 
 // ---------- seasons ----------
 // Snow: 'auto' snows from 1 December to 6 January, or 'on' / 'off' all year.
@@ -113,6 +114,7 @@ function createWindow() {
       scale: settings.scale,
       hidden: settings.hidden,
       mischief: settings.mischief,
+      gore: !!settings.gore,
       snow: snowOn(),
       windowGrab: windows.supported()
     });
@@ -163,7 +165,7 @@ ipcMain.on('things-changed', (_e, things) => {
   const shown = things
     .filter(t => t && itemUnlocked(t.id))
     .map(t => (typeof t.x === 'number' ? { id: t.id, x: Math.max(0, Math.min(1, t.x)) }
-      : (t.hat && hatAllowed(t.hat, t.id) ? { id: t.id, hat: t.hat } : { id: t.id })));
+      : Object.assign({ id: t.id }, t.hat && hatAllowed(t.hat, t.id) ? { hat: t.hat } : {}, t.zombie === true ? { zombie: true } : {})));
   settings.things = [...shown, ...locked].slice(0, MAX_THINGS);
   saveSettings();
 });
@@ -567,11 +569,13 @@ ipcMain.on('thing-menu', (_e, { uid, id }) => {
     tpl.push({ label: 'Nap time', click: act('sleep') });
     tpl.push({ label: 'Go for a walk', click: act('walk') });
     tpl.push({ label: 'Chase the mouse', click: act('chase') });
-    tpl.push({ label: 'Climb the wall', click: act('climb') });
-    tpl.push({ label: 'Pick something up', click: act('grab') });
+    if (!item.vehicle) tpl.push({ label: 'Climb the wall', click: act('climb') });
+    if (!item.vehicle) tpl.push({ label: 'Pick something up', click: act('grab') });
     tpl.push({ label: 'Start a battle!', click: act('battle') });
     if (item.flies) tpl.push({ label: '🧹 Fly around', click: act('fly') });
     if (item.caster) tpl.push({ label: '✨ Cast a spell', click: act('cast') });
+    if (item.zombie) tpl.push({ label: '🧟 Bite someone', click: act('bite') });
+    if (item.curer) tpl.push({ label: '💉 Cure a zombie', click: act('cure') });
     tpl.push({ type: 'separator' });
     if (lv >= 3) tpl.push({ label: '⭐ Show off a trick', click: () => { playEarn(); send('thing-action', { uid, action: 'trick' }); } });
     tpl.push({ label: '🎩 Hats', submenu: [
@@ -677,13 +681,21 @@ function buildTrayMenu() {
         { label: 'Dance party!', click: () => playSend('party') },
         ...(newYearTime() ? [{ label: '🎆 Fireworks!', click: () => playSend('fireworks') }] : []),
         { label: 'Conga line!', click: () => playSend('conga') },
+        ...(PACKS.some(p => p.id === 'outbreak' && packUnlocked(p)) ? [
+          { label: '🧟 Zombie outbreak!', click: () => playSend('outbreak') },
+          { label: '📦 Supply drop!', click: () => playSend('supplydrop') }
+        ] : []),
         { label: 'Move things around!', click: () => playSend('tidy') },
         ...(windows.supported() ? [{ label: 'Grab a window!', click: () => playSend('window') }] : []),
         { type: 'separator' },
         {
           label: 'Mischief (chasing, climbing, window tugging)', type: 'checkbox', checked: settings.mischief,
           click: i => { settings.mischief = i.checked; saveSettings(); send('set-mischief', settings.mischief); }
-        }
+        },
+        ...(PACKS.some(p => p.id === 'outbreak' && packUnlocked(p)) ? [{
+          label: '🩸 Gore (Outbreak blood splats and trails)', type: 'checkbox', checked: !!settings.gore,
+          click: i => { settings.gore = i.checked; saveSettings(); send('set-gore', settings.gore); }
+        }] : [])
       ]
     },
     {
