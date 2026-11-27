@@ -7,6 +7,7 @@ const licence = require('./licence');
 const windows = require('./windows');
 const stats = require('./stats');
 const bucks = require('./bucks');
+const steam = require('./steam');   // does nothing unless this is the Steam build
 
 const IS_MAC = process.platform === 'darwin';
 const MAX_THINGS = 40;
@@ -15,6 +16,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
   return;
 }
+steam.init();
 
 // ---------- packs ----------
 const PACK_FILES = require('./packs');
@@ -28,7 +30,9 @@ for (const p of PACKS) {
 
 // Packs with `licensed: true` need a valid licence key that covers them.
 // `testing: true` packs are open to Dev/Beta key holders until they're published.
-const packUnlocked = p => !p.licensed || licence.isUnlocked(p.id) || (p.id === 'builds' && settings.keepBuilds) || (p.testing && licence.isUnlocked('tester'));
+// On Steam, a DLC the player owns unlocks its packs too.
+const owns = id => licence.isUnlocked(id) || (steam.on && steam.ownsPack(id));
+const packUnlocked = p => !p.licensed || owns(p.id) || (p.id === 'builds' && settings.keepBuilds) || (p.testing && licence.isUnlocked('tester'));
 // Bitty Shop items (pack with `shop: true`) unlock one by one when bought with Buddy Bucks.
 const SHOP_ITEM = Object.fromEntries(bucks.CATALOGUE.filter(c => c.item).map(c => [c.item, c.id]));
 const shopOwned = id => !SHOP_ITEM[id] || (wallet && wallet.owned.includes(SHOP_ITEM[id]));
@@ -388,7 +392,7 @@ const HAT_LABELS = { santa: '🎅 Santa hat', golden: '👑 Golden crown (Suppor
 function hatsFor(itemId) {
   const out = [{ id: 'santa', label: HAT_LABELS.santa }];
   for (const c of bucks.CATALOGUE) if (c.kind === 'hat' && wallet.owned.includes(c.id)) out.push({ id: c.id, label: c.name });
-  if (licence.isUnlocked('supporter')) out.push({ id: 'golden', label: HAT_LABELS.golden });
+  if (owns('supporter')) out.push({ id: 'golden', label: HAT_LABELS.golden });
   if (itemId && bucks.level(wallet.friends[itemId] || 0) >= 5) out.push({ id: 'heart', label: HAT_LABELS.heart });
   return out;
 }
@@ -507,7 +511,7 @@ const PAID_PACKS = [
   { id: 'bundle', name: 'Everything Bundle', price: '£12.99', url: 'https://payhip.com/b/ngN9f', packs: ['fantasy', 'builds', 'serverroom', 'supporter'],
     blurb: 'Fantasy Folk, Builds, Server Room and the Supporter Pack (a golden hat for everyone). The only way to get Server Room right now.' }
 ];
-const paidOwned = p => p.packs.every(id => { const pk = PACKS.find(x => x.id === id); return pk ? packUnlocked(pk) : licence.isUnlocked(id); });
+const paidOwned = p => p.packs.every(id => { const pk = PACKS.find(x => x.id === id); return pk ? packUnlocked(pk) : owns(id); });
 
 // Everything the window shows. Private packs only appear once unlocked, and never as silhouettes.
 function shopState() {
@@ -522,8 +526,10 @@ function shopState() {
   }
   return {
     wallet: bucks.view(wallet), catalogue: bucks.CATALOGUE, book,
-    hats: hatsFor(null).map(h => h.id), supporter: licence.isUnlocked('supporter'), signedIn: !!account,
-    paid: PAID_PACKS.map(p => ({ id: p.id, name: p.name, price: p.price, blurb: p.blurb, packs: p.packs, owned: paidOwned(p) }))
+    hats: hatsFor(null).map(h => h.id), supporter: owns('supporter'), signedIn: !!account,
+    store: steam.on ? 'steam' : 'web',
+    paid: PAID_PACKS.filter(p => !steam.on || steam.dlcFor(p.id))   // on Steam, only packs that are set up as DLC
+      .map(p => ({ id: p.id, name: p.name, price: steam.on ? 'On Steam' : p.price, blurb: p.blurb, packs: p.packs, owned: paidOwned(p) }))
   };
 }
 ipcMain.handle('shop:state', () => shopState());
@@ -547,7 +553,8 @@ ipcMain.handle('shop:spawn', (_e, id) => { if (itemUnlocked(id)) send('spawn', i
 // Packs tab buttons. Only these fixed destinations can be opened, never a URL from the window.
 ipcMain.handle('shop:open', (_e, what) => {
   const p = PAID_PACKS.find(x => x.id === what);
-  if (p) shell.openExternal(p.url);
+  if (p && steam.on) steam.openStore(shell, p.id);   // on Steam, packs are sold as DLC
+  else if (p) shell.openExternal(p.url);
   else if (what === 'redeem') shell.openExternal(ACCOUNT_PAGE);
   else if (what === 'signin') openSignInWindow();
   else if (what === 'licence') openLicenceWindow();
@@ -779,7 +786,7 @@ let readyVersion = null;   // an update that has downloaded and is waiting for a
 let lastAutoCheck = 0;
 
 function setupUpdates() {
-  if (!app.isPackaged) return;
+  if (!app.isPackaged || steam.on) return;   // Steam updates the Steam version itself
   autoUpdater = require('electron-updater').autoUpdater; // loaded lazily: only the installed app needs it
   // macOS can only install updates silently when the app is code-signed.
   // Unsigned Mac builds get a "download the new version" prompt instead.
@@ -850,7 +857,7 @@ async function setTesting(on) {
 
 function checkForUpdates(manual) {
   if (!app.isPackaged || !autoUpdater) {
-    if (manual) dialog.showMessageBox({ type: 'info', message: 'Updates only work in the installed app.' });
+    if (manual) dialog.showMessageBox({ type: 'info', message: steam.on ? 'Steam keeps Bitty Buddies up to date for you.' : 'Updates only work in the installed app.' });
     return;
   }
   manualCheck = manual;
