@@ -44,8 +44,6 @@
     id: 'outbreak',
     name: 'Outbreak',
     licensed: true,
-    hidden: true,   // testing: Dev/Beta key holders only until it's published
-    testing: true,
     items: {
       shambler: {
         name: 'Shambler', blurb: 'groaning classic who shuffles about with arms out', move: 'walk', speed: 12, zombie: true,

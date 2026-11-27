@@ -508,8 +508,12 @@ const PAID_PACKS = [
     blurb: '10 builds for your village: a windmill, a wishing well, a fountain, a market stall and more.' },
   { id: 'fantasy', name: 'Fantasy Folk', price: '£3.99', url: 'https://payhip.com/b/tA5Ho', packs: ['fantasy'],
     blurb: '11 adventurers and 4 homes. The Witch flies on her broom and the Wizard casts real magic.' },
-  { id: 'bundle', name: 'Everything Bundle', price: '£11.99', url: 'https://payhip.com/b/ngN9f', packs: ['fantasy', 'builds', 'serverroom', 'supporter'],
-    blurb: 'Fantasy Folk, Builds, Server Room and the Supporter Pack (a golden hat for everyone). The only way to get Server Room right now.' }
+  { id: 'serverroom', name: 'Server Room', price: '£2.99', url: 'https://payhip.com/b/zo4WY', packs: ['serverroom'],
+    blurb: 'An IT team and their kit. Boot up the servers, and your engineers fix them when they break.' },
+  { id: 'outbreak', name: 'Outbreak', price: '£5.99', url: 'https://payhip.com/b/UeZck', packs: ['outbreak'],
+    blurb: '42 zombies, soldiers, vehicles and outpost builds. Zombies bite, the army fights back, and only the medic can cure them.' },
+  { id: 'bundle', name: 'Everything Bundle', price: '£11.99', url: 'https://payhip.com/b/ngN9f', packs: ['fantasy', 'builds', 'serverroom', 'outbreak', 'supporter'],
+    blurb: 'Every pack: Fantasy Folk, Builds, Server Room and Outbreak, plus the Supporter Pack (a golden hat for everyone).' }
 ];
 const paidOwned = p => p.packs.every(id => { const pk = PACKS.find(x => x.id === id); return pk ? packUnlocked(pk) : owns(id); });
 
