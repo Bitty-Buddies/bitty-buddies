@@ -504,11 +504,11 @@ function openShopWindow(tab = 'shop') {
 // the receipt email has a code to redeem on the account page, then the pack unlocks here.
 const ACCOUNT_PAGE = 'https://bitty-buddies.github.io/account.html';
 const PAID_PACKS = [
-  { id: 'builds', name: 'Builds', price: '£1', url: 'https://payhip.com/b/eUfOF', packs: ['builds'],
+  { id: 'builds', name: 'Builds', price: '£1.99', url: 'https://payhip.com/b/eUfOF', packs: ['builds'],
     blurb: '10 builds for your village: a windmill, a wishing well, a fountain, a market stall and more.' },
-  { id: 'fantasy', name: 'Fantasy Folk', price: '£2.99', url: 'https://payhip.com/b/tA5Ho', packs: ['fantasy'],
+  { id: 'fantasy', name: 'Fantasy Folk', price: '£3.99', url: 'https://payhip.com/b/tA5Ho', packs: ['fantasy'],
     blurb: '11 adventurers and 4 homes. The Witch flies on her broom and the Wizard casts real magic.' },
-  { id: 'bundle', name: 'Everything Bundle', price: '£12.99', url: 'https://payhip.com/b/ngN9f', packs: ['fantasy', 'builds', 'serverroom', 'supporter'],
+  { id: 'bundle', name: 'Everything Bundle', price: '£11.99', url: 'https://payhip.com/b/ngN9f', packs: ['fantasy', 'builds', 'serverroom', 'supporter'],
     blurb: 'Fantasy Folk, Builds, Server Room and the Supporter Pack (a golden hat for everyone). The only way to get Server Room right now.' }
 ];
 const paidOwned = p => p.packs.every(id => { const pk = PACKS.find(x => x.id === id); return pk ? packUnlocked(pk) : owns(id); });

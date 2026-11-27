@@ -17,9 +17,9 @@
   const ORDER = [
     { id: 'critters', how: 'Free with every download', tag: 'Free', free: true },
     { id: 'winter', how: 'Free advent calendar, 1 to 25 December', tag: 'Free', free: true },
-    { id: 'builds', how: 'Builds pack', tag: '£1', buy: 'https://payhip.com/b/eUfOF', buyText: 'Buy Builds for £1' },
-    { id: 'fantasy', how: 'Fantasy Folk pack', tag: '£2.99', buy: 'https://payhip.com/b/tA5Ho', buyText: 'Buy Fantasy Folk for £2.99' },
-    { id: 'serverroom', how: 'Server Room pack, in the Everything Bundle', tag: 'Bundle', buy: BUNDLE, buyText: 'Get it in the Everything Bundle, £12.99' },
+    { id: 'builds', how: 'Builds pack', tag: '£1.99', buy: 'https://payhip.com/b/eUfOF', buyText: 'Buy Builds for £1.99' },
+    { id: 'fantasy', how: 'Fantasy Folk pack', tag: '£3.99', buy: 'https://payhip.com/b/tA5Ho', buyText: 'Buy Fantasy Folk for £3.99' },
+    { id: 'serverroom', how: 'Server Room pack, in the Everything Bundle', tag: 'Bundle', buy: BUNDLE, buyText: 'Get it in the Everything Bundle, £11.99' },
     { id: 'shop', how: 'Bitty Shop, with Buddy Bucks', tag: 'Buddy Bucks', shop: true }
   ];
   const LEVELS = [0, 180, 600, 1500, 3000];                  // friendship: minutes out together (same as the app)
