@@ -154,7 +154,7 @@
     $('already').hidden = steamStore;
     if (steamStore) $('packs-intro').textContent = 'Extra packs are DLC on Steam: a one-off payment, no subscription. Buy one and it unlocks here straight away.';
     const pick = (pack, n) => state.book.filter(b => b.pack === pack && b.kind === 'pet').slice(0, n).map(b => b.id);
-    const art = { builds: state.book.filter(b => b.pack === 'builds').slice(3, 6).map(b => b.id), fantasy: pick('fantasy', 4), bundle: [...pick('fantasy', 1), ...pick('serverroom', 2), ...state.book.filter(b => b.pack === 'builds').slice(4, 5).map(b => b.id)] };
+    const art = { builds: state.book.filter(b => b.pack === 'builds').slice(3, 6).map(b => b.id), fantasy: pick('fantasy', 4), serverroom: pick('serverroom', 4), outbreak: pick('outbreak', 4), supporter: pick('critters', 3), bundle: [...pick('fantasy', 1), ...pick('serverroom', 2), ...state.book.filter(b => b.pack === 'builds').slice(4, 5).map(b => b.id)] };
     for (const p of state.paid) {
       const card = el('div', 'item' + (p.owned ? ' owned' : '') + (p.id === 'bundle' ? ' best' : ''));
       card.append(packArt(art[p.id] || []), el('b', null, p.name), el('div', 'blurb', p.blurb), el('div', 'money', p.price));

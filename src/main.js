@@ -528,8 +528,9 @@ function shopState() {
     wallet: bucks.view(wallet), catalogue: bucks.CATALOGUE, book,
     hats: hatsFor(null).map(h => h.id), supporter: owns('supporter'), signedIn: !!account,
     store: steam.on ? 'steam' : 'web',
-    paid: PAID_PACKS.filter(p => !steam.on || steam.dlcFor(p.id))   // on Steam, only packs that are set up as DLC
-      .map(p => ({ id: p.id, name: p.name, price: steam.on ? 'On Steam' : p.price, blurb: p.blurb, packs: p.packs, owned: paidOwned(p) }))
+    // on Steam the packs are DLC (and a Steam bundle), listed in package.json "bitty.steam"
+    paid: (steam.on ? steam.shopList().map(p => ({ ...p, price: 'On Steam' })) : PAID_PACKS)
+      .map(p => ({ id: p.id, name: p.name, price: p.price, blurb: p.blurb, packs: p.packs, owned: paidOwned(p) }))
   };
 }
 ipcMain.handle('shop:state', () => shopState());
@@ -553,8 +554,8 @@ ipcMain.handle('shop:spawn', (_e, id) => { if (itemUnlocked(id)) send('spawn', i
 // Packs tab buttons. Only these fixed destinations can be opened, never a URL from the window.
 ipcMain.handle('shop:open', (_e, what) => {
   const p = PAID_PACKS.find(x => x.id === what);
-  if (p && steam.on) steam.openStore(shell, p.id);   // on Steam, packs are sold as DLC
-  else if (p) shell.openExternal(p.url);
+  if (steam.on && steam.shopList().some(x => x.id === what)) steam.openStore(shell, what);   // on Steam, packs are sold as DLC
+  else if (p && !steam.on) shell.openExternal(p.url);
   else if (what === 'redeem') shell.openExternal(ACCOUNT_PAGE);
   else if (what === 'signin') openSignInWindow();
   else if (what === 'licence') openLicenceWindow();

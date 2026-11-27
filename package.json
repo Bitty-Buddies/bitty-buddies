@@ -73,7 +73,62 @@
     "revokedApi": "https://api.github.com/repos/Bitty-Buddies/bitty-buddies/contents/revoked.json",
     "statsApi": "https://bitty-admin.reece-feetenby.workers.dev/stats",
     "statsNamespace": "bitty-buddies",
-    "reportUrl": "https://bitty-admin.reece-feetenby.workers.dev/report"
+    "reportUrl": "https://bitty-admin.reece-feetenby.workers.dev/report",
+    "steam": {
+      "appId": 0,
+      "dlc": [
+        {
+          "appId": 0,
+          "shop": "builds",
+          "name": "Builds",
+          "packs": [
+            "builds"
+          ],
+          "blurb": "10 builds for your village: a windmill, a wishing well, a fountain, a market stall and more."
+        },
+        {
+          "appId": 0,
+          "shop": "fantasy",
+          "name": "Fantasy Folk",
+          "packs": [
+            "fantasy"
+          ],
+          "blurb": "11 adventurers and 4 homes. The Witch flies on her broom and the Wizard casts real magic."
+        },
+        {
+          "appId": 0,
+          "shop": "serverroom",
+          "name": "Server Room",
+          "packs": [
+            "serverroom"
+          ],
+          "blurb": "An IT team for your desktop. Boot up the server and your engineers fix it when it breaks."
+        },
+        {
+          "appId": 0,
+          "shop": "outbreak",
+          "name": "Outbreak",
+          "packs": [
+            "outbreak"
+          ],
+          "blurb": "42 zombies, soldiers, vehicles and outpost builds. Zombies bite, the army fights back, and only the medic can cure them."
+        },
+        {
+          "appId": 0,
+          "shop": "supporter",
+          "name": "Supporter Pack",
+          "packs": [
+            "supporter"
+          ],
+          "blurb": "A golden hat for every buddy, and a big thank-you."
+        }
+      ],
+      "bundle": {
+        "id": 0,
+        "name": "Everything Bundle",
+        "blurb": "Every pack above in one go, for less."
+      }
+    }
   },
   "overrides": {
     "minimatch@>=7.0.0 <11.0.1": "^11.0.8"
