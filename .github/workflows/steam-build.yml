@@ -1,9 +1,12 @@
 name: Steam build
 
 # Builds the Steam version of the app as a folder to upload with SteamPipe.
-# Run it by hand (Actions -> Steam build -> Run workflow). It never makes a GitHub release.
+# Run it by hand (Actions -> Steam build -> Run workflow), or push to the "steam" branch.
+# It never makes a GitHub release.
 on:
   workflow_dispatch:
+  push:
+    branches: [steam]
 
 permissions:
   contents: read
