@@ -3,19 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'">
-  <title>Bitty Shop</title>
+  <title>Bitty Buddies</title>
   <style>
     :root { --sky: #8FCBF0; --grass: #6CBE4E; --dirt: #7C573A; --ink: #2E345C; --card: #FFFDF6; --red: #C8392F; --ok: #3C8A2D; --gold: #F5B82E; --muted: #5C6488; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; font: 14px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--ink); background: var(--sky); user-select: none; }
-    header { position: sticky; top: 0; z-index: 2; background: var(--ink); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 14px; }
-    header h1 { margin: 0; font-size: 17px; letter-spacing: 1px; flex: 1; }
-    .purse { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 16px; background: #fff; color: var(--ink); padding: 4px 12px 4px 8px; border: 3px solid var(--gold); }
-    .purse canvas { width: 20px; height: 20px; image-rendering: pixelated; }
-    nav { display: flex; gap: 0; padding: 12px 16px 0; }
-    nav button { font: inherit; font-weight: bold; padding: 8px 16px; border: 3px solid var(--ink); border-bottom: none; background: #CFE6F7; color: var(--ink); cursor: pointer; margin-right: 6px; }
-    nav button[aria-selected=true] { background: var(--card); }
-    main { margin: 0 16px 16px; background: var(--card); border: 3px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); padding: 14px 16px 18px; }
+    body { margin: 0; height: 100vh; display: flex; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; color: var(--ink); background: #EEF6FC; user-select: none; overflow: hidden; }
+    .px { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+    .side { width: 228px; flex: none; background: var(--ink); color: #D6DBF2; padding: 12px 10px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 4px; }
+    .brand i { width: 30px; height: 30px; background: var(--grass); box-shadow: inset 0 -8px 0 var(--dirt), 3px 3px 0 #1C2142; flex: none; }
+    .brand b { display: block; color: #fff; font: bold 15px ui-monospace, Consolas, monospace; }
+    .brand small { color: #A9B0D6; font-size: 12px; }
+    .purse { display: flex; align-items: center; gap: 8px; width: 100%; font: inherit; font-weight: bold; font-size: 14px; background: #3A416E; color: #FFD86B; padding: 7px 10px; border: 0; cursor: pointer; text-align: left; }
+    .purse:hover { background: #454D80; }
+    .purse canvas { width: 18px; height: 18px; image-rendering: pixelated; }
+    .side h3 { margin: 4px 10px 1px; font-size: 12px; font-weight: 600; color: #A9B0D6; }
+    .side nav { display: grid; gap: 1px; }
+    .side nav button { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 30px; padding: 0 10px; font: inherit; font-weight: 500; color: #D6DBF2; background: none; border: 0; cursor: pointer; text-align: left; }
+    .side nav button:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .side nav button[aria-selected=true] { background: #fff; color: var(--ink); font-weight: 700; }
+    .side .count { font-size: 11px; font-weight: 700; padding: 0 7px; background: var(--grass); color: var(--ink); border-radius: 999px; }
+    .side-foot { margin-top: auto; padding: 8px 10px; background: #252A4D; font-size: 12px; color: #A9B0D6; }
+    .side-foot b { display: block; color: #fff; font-size: 13px; }
+    .content { flex: 1; min-width: 0; overflow-y: auto; }
+    main { padding: 20px 26px 40px; max-width: 1100px; }
+    #panel-shop, #panel-book, #panel-packs { background: var(--card); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 14px 16px 18px; }
+    .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin: 0 0 14px; }
+    .head h1 { margin: 0; font: bold 24px ui-monospace, Consolas, monospace; }
+    .head p { margin: 2px 0 0; color: var(--muted); }
+    .card { background: #fff; border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 12px 16px 14px; margin: 0 0 16px; }
+    .card > h2:first-child { margin-top: 0; }
+    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 8px; }
+    .card-head h2 { margin: 0; }
+    .linkbtn { font: inherit; font-weight: 600; color: #2F6FB8; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
     h2 { font-size: 15px; margin: 14px 0 8px; }
     h2:first-child { margin-top: 0; }
     .intro { margin: 0 0 6px; color: var(--muted); font-size: 13px; }
@@ -56,20 +76,146 @@
     .steps { margin: 0 0 10px; padding-left: 20px; font-size: 13px; }
     .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
     [hidden] { display: none !important; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+    .tile { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 6px 8px; font: inherit; color: var(--ink); background: #F4F9FD; border: 2px solid #CFE0EE; cursor: pointer; }
+    .tile:hover, .tile.on { border-color: var(--ink); background: #fff; }
+    .tile canvas { width: 100%; height: 58px; image-rendering: pixelated; }
+    .tile b { font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tile span { font-size: 11.5px; color: var(--muted); }
+    .plays { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .play { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 56px; padding: 6px 12px; font: inherit; text-align: left; color: var(--ink); background: #fff; border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); cursor: pointer; }
+    .play b { font-size: 14px; }
+    .play span { font-size: 12px; color: var(--muted); }
+    .play:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+    .play:disabled { background: #E4EAF0; border-color: #B8C3CF; box-shadow: none; cursor: default; transform: none; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+    .chip { font: inherit; font-weight: 600; font-size: 13px; height: 30px; padding: 0 12px; color: var(--ink); background: #fff; border: 2px solid var(--ink); cursor: pointer; }
+    .chip[aria-pressed=true] { background: var(--ink); color: #fff; }
+    .search { font: inherit; height: 34px; padding: 0 10px; border: 2px solid #CFE0EE; min-width: 260px; user-select: text; }
+    .search:focus, select:focus { outline: none; border-color: var(--ink); }
+    select { font: inherit; height: 34px; padding: 0 8px; border: 2px solid var(--ink); background: #fff; color: var(--ink); }
+    .spawns { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+    .spawn { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #F4F9FD; border: 2px solid #CFE0EE; }
+    .spawn canvas { width: 44px; height: 40px; image-rendering: pixelated; flex: none; }
+    .spawn div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .spawn b { font-size: 13px; }
+    .spawn span { font-size: 11.5px; color: var(--muted); }
+    .split { display: flex; gap: 16px; align-items: flex-start; }
+    .live-list { width: 230px; flex: none; display: grid; gap: 4px; max-height: calc(100vh - 140px); overflow-y: auto; }
+    .live-row { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 2px 8px; font: inherit; text-align: left; color: var(--ink); background: transparent; border: 2px solid transparent; cursor: pointer; }
+    .live-row:hover { background: #fff; }
+    .live-row.on { background: #fff; border-color: var(--ink); }
+    .live-row canvas { width: 34px; height: 32px; image-rendering: pixelated; flex: none; }
+    .live-row div { display: flex; flex-direction: column; min-width: 0; }
+    .live-row b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .live-row span { font-size: 11.5px; color: var(--muted); }
+    .detail { flex: 1; min-width: 0; margin: 0; }
+    .who { display: flex; gap: 16px; align-items: center; margin: 0 0 12px; }
+    .who canvas { width: 140px; height: 90px; image-rendering: pixelated; background: linear-gradient(#DDF0FB 0 78%, #A6D98F 78%); border: 2px solid #CFE0EE; flex: none; }
+    .who input { font: bold 18px ui-monospace, Consolas, monospace; color: var(--ink); border: 2px solid #CFE0EE; padding: 3px 8px; width: 260px; max-width: 100%; user-select: text; }
+    .acts { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 0 0 12px; }
+    .acts button, .btn { font: inherit; font-weight: 600; min-height: 38px; padding: 0 12px; color: var(--ink); background: #F4F9FD; border: 2px solid var(--ink); cursor: pointer; }
+    .btn.go { background: #3E8E2C; color: #fff; }
+    .btn.bad { color: #B83636; border-color: #B83636; background: #fff; }
+    .btn:disabled { opacity: .6; cursor: default; }
+    .foot-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 2px solid #EEF2F6; }
+    .empty { color: var(--muted); padding: 8px 0; }
+    .set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; align-items: start; }
+    .set-grid .card { margin: 0; }
+    .set { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-top: 2px solid #EEF2F6; }
+    .set div { display: flex; flex-direction: column; }
+    .set b { font-weight: 600; }
+    .set span { font-size: 12px; color: var(--muted); }
+    .switch { width: 46px; height: 26px; flex: none; position: relative; padding: 0; border: 2px solid var(--ink); background: #E4EAF0; cursor: pointer; }
+    .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; box-sizing: border-box; background: #fff; border: 2px solid var(--ink); }
+    .switch[aria-checked=true] { background: #3E8E2C; }
+    .switch[aria-checked=true]::after { left: 22px; }
     @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
   </style>
 </head>
 <body>
-  <header>
-    <h1>🛍️ Bitty Shop</h1>
-    <div class="purse" title="Your Buddy Bucks"><canvas id="coin" width="5" height="5"></canvas><span id="balance">0</span> Buddy Bucks</div>
-  </header>
-  <nav role="tablist">
-    <button role="tab" id="tab-shop" data-tab="shop" aria-selected="true">Shop</button>
-    <button role="tab" id="tab-book" data-tab="book" aria-selected="false">📖 Buddy Book</button>
-    <button role="tab" id="tab-packs" data-tab="packs" aria-selected="false">🛒 Packs</button>
-  </nav>
+  <aside class="side">
+    <div class="brand"><i aria-hidden="true"></i><span><b>Bitty Buddies</b><small>Control Centre</small></span></div>
+    <button class="purse" type="button" data-go="shop" title="Your Buddy Bucks. Open the Bitty Shop"><canvas id="coin" width="5" height="5"></canvas><span><span id="balance">0</span> Buddy Bucks</span></button>
+    <h3>Play</h3>
+    <nav role="tablist" aria-label="Play">
+      <button role="tab" data-tab="play">Playground</button>
+      <button role="tab" data-tab="spawn">Spawn and build</button>
+    </nav>
+    <h3>My buddies</h3>
+    <nav role="tablist" aria-label="My buddies">
+      <button role="tab" data-tab="onscreen">On screen now <span class="count" id="live-count"></span></button>
+      <button role="tab" data-tab="hats">Hats and outfits</button>
+      <button role="tab" id="tab-book" data-tab="book">Buddy Book</button>
+    </nav>
+    <h3>Shop</h3>
+    <nav role="tablist" aria-label="Shop">
+      <button role="tab" id="tab-packs" data-tab="packs">Packs</button>
+      <button role="tab" id="tab-shop" data-tab="shop">Bitty Shop</button>
+    </nav>
+    <h3>Settings</h3>
+    <nav role="tablist" aria-label="Settings">
+      <button role="tab" data-tab="settings">Settings</button>
+      <button role="tab" data-tab="account">Account and updates</button>
+    </nav>
+    <h3>Help</h3>
+    <nav aria-label="Help">
+      <button type="button" data-act="report">Report a problem</button>
+      <button type="button" data-act="status">Service status</button>
+    </nav>
+    <div class="side-foot"><b id="foot-who">Not signed in</b><span id="foot-ver"></span></div>
+  </aside>
+  <div class="content">
   <main>
+    <section id="panel-play" hidden>
+      <div class="head"><div><h1>Playground</h1><p>Everything your buddies can do, one click away.</p></div>
+        <div class="row" style="margin:0"><button class="btn" type="button" id="play-hide"></button><label class="row" style="margin:0;align-items:center">Size <select id="play-size" aria-label="Size"></select></label></div></div>
+      <div class="card">
+        <div class="card-head"><h2>On your screen now</h2><button class="linkbtn" type="button" data-go="onscreen">Manage buddies</button></div>
+        <div class="tiles" id="play-live"></div>
+        <p class="empty" id="play-live-empty" hidden>Nobody's out yet. Spawn a buddy below.</p>
+      </div>
+      <div class="card-head"><h2>Play now</h2><span class="cap" id="play-last" style="margin:0"></span></div>
+      <div class="plays" id="plays" style="margin:0 0 18px"></div>
+      <div class="card">
+        <div class="card-head"><h2>Quick spawn</h2><button class="linkbtn" type="button" data-go="spawn">Everything you can spawn</button></div>
+        <div class="spawns" id="quick-spawn"></div>
+      </div>
+    </section>
+    <section id="panel-spawn" hidden>
+      <div class="head"><div><h1>Spawn and build</h1><p id="spawn-intro">Bring buddies and builds out onto your desktop.</p></div>
+        <input class="search" id="spawn-q" type="search" placeholder="Search buddies and builds" aria-label="Search buddies and builds"></div>
+      <div class="chips" id="spawn-kinds"></div>
+      <div class="chips" id="spawn-packs"></div>
+      <div class="spawns" id="spawn-list"></div>
+      <p class="empty" id="spawn-empty" hidden>Nothing matches that.</p>
+      <div id="spawn-locked"></div>
+    </section>
+    <section id="panel-onscreen" hidden>
+      <div class="head"><div><h1>On screen now</h1><p id="live-intro"></p></div></div>
+      <div class="split">
+        <div class="live-list" id="live-list"></div>
+        <div class="card detail" id="live-detail"></div>
+      </div>
+      <div class="foot-row" style="margin-top:16px"><span class="cap" style="margin:0">Clear the desktop:</span><div class="row" style="margin:0"><button class="btn" type="button" data-clear="pet">Remove all pets</button><button class="btn" type="button" data-clear="build">Remove all builds</button><button class="btn bad" type="button" data-clear="all">Remove everything</button></div></div>
+    </section>
+    <section id="panel-hats" hidden>
+      <div class="head"><div><h1>Hats and outfits</h1><p>Dress everyone at once. To dress just one buddy, pick them in On screen now.</p></div></div>
+      <div class="card"><h2>Put a hat on everyone</h2><div class="row" id="hat-all"></div>
+        <div class="foot-row"><button class="btn" type="button" id="hat-none">Take all hats off</button><button class="linkbtn" type="button" data-go="shop">Get more hats in the Bitty Shop</button></div></div>
+    </section>
+    <section id="panel-settings" hidden>
+      <div class="head"><div><h1>Settings</h1><p>Changes save as soon as you make them.</p></div></div>
+      <div class="set-grid" id="settings"></div>
+    </section>
+    <section id="panel-account" hidden>
+      <div class="head"><div><h1>Account and updates</h1><p>Your Bitty Buddies account, licence keys and app version.</p></div></div>
+      <div class="set-grid">
+        <div class="card"><h2>Account</h2><p id="acct-text"></p><div class="row" id="acct-btns"></div></div>
+        <div class="card"><h2>Licence keys</h2><p id="keys-text"></p><div class="row"><button class="btn" type="button" data-act="licence">Licence keys…</button><button class="btn" type="button" data-act="redeem">Redeem a purchase code</button></div></div>
+        <div class="card"><h2>Updates</h2><p id="upd-text"></p><div class="row" id="upd-btns"></div><div id="upd-test"></div></div>
+      </div>
+    </section>
     <section id="panel-shop">
       <p class="intro">Your buddies earn Buddy Bucks while they're out on your desktop: a coin every couple of minutes, a little for naps, games and battles, and a gift each day. Buddy Bucks are never sold for money.</p>
       <p class="cap" id="cap"></p>
@@ -105,6 +251,7 @@
       <p class="cap">Buddy Bucks can't buy packs, and packs never cost Buddy Bucks.</p>
     </section>
   </main>
+  </div>
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="../shared/pixel.js"></script>
   <script src="../shared/outfits.js"></script>

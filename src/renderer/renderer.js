@@ -1034,8 +1034,8 @@
 
   function report() {
     api.thingsChanged(things.map(t => t.isBuild
-      ? { id: t.id, x: t.x / Math.max(1, W() - t.wpx()) }
-      : Object.assign({ id: t.id }, t.hat ? { hat: t.hat } : {}, t.infected ? { zombie: true } : {})));
+      ? { id: t.id, uid: t.uid, x: t.x / Math.max(1, W() - t.wpx()) }
+      : Object.assign({ id: t.id, uid: t.uid }, t.hat ? { hat: t.hat } : {}, t.infected ? { zombie: true } : {})));
   }
 
   // ---------- drawing ----------
@@ -1349,6 +1349,7 @@
     things = (d.things || []).filter(s => REG[s.id]).map(s => new Thing(s.id, { x: s.x, hat: s.hat, zombie: s.zombie }));
     setSnow(d.snow);
     ready = true;
+    report();   // so the Control Centre knows who's on screen straight away
   });
   api.on('spawn', id => {
     if (!ready || !REG[id] || things.length >= MAX_THINGS) return;

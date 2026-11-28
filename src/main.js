@@ -172,7 +172,12 @@ ipcMain.on('things-changed', (_e, things) => {
       : Object.assign({ id: t.id }, t.hat && hatAllowed(t.hat, t.id) ? { hat: t.hat } : {}, t.zombie === true ? { zombie: true } : {})));
   settings.things = [...shown, ...locked].slice(0, MAX_THINGS);
   saveSettings();
+  // What's on screen right now, with the overlay's ids, for the Control Centre's "On screen now".
+  live = things.filter(t => t && itemUnlocked(t.id) && Number.isInteger(t.uid))
+    .map(t => ({ uid: t.uid, id: t.id, hat: typeof t.hat === 'string' ? t.hat : null, zombie: t.zombie === true }));
+  pushCentre();
 });
+let live = [];
 
 // ---------- licence window ----------
 let licenceWin = null;
@@ -430,7 +435,7 @@ function bucksMinute() {
       : u.level === 3 ? `Right-click ${who} for a new trick!`
       : u.level === 4 ? `${who} brought you a gift of ${u.gift} Buddy Bucks!`
       : `${who} can wear the Forever friend heart now.`;
-    if (Notification.isSupported()) {
+    if (Notification.isSupported() && settings.buddyNews !== false) {
       const n = new Notification({ title: `❤ ${who} is now your ${u.name}!`, body: extra, icon: path.join(__dirname, '..', 'assets', 'tray.png') });
       n.on('click', () => openShopWindow('book'));
       n.show();
@@ -486,13 +491,101 @@ function pushBucks(force = false) {
   }).catch(() => { lastPush = 0; });
 }
 
-// ---------- Bitty Shop and Buddy Book window ----------
+// ---------- Control Centre (also the Bitty Shop and Buddy Book) ----------
+// One window for everything that used to live in the tray menu. Grouped in a sidebar: Play, My buddies,
+// Shop, Settings and Help. Every change it asks for goes through the same code the tray uses.
+const SIZES = [['Small', 3], ['Medium', 4], ['Large', 6], ['Huge', 8]];
+const hasPack = id => PACKS.some(p => p.id === id && packUnlocked(p));
+function playList() {
+  const L = [['battle', 'Start a battle', 'Everyone'], ['ball', 'Throw a ball', 'Everyone'], ['treats', 'Drop some treats', 'Everyone'],
+    ['party', 'Dance party', 'Everyone'], ['conga', 'Conga line', 'Everyone'], ['tidy', 'Move things around', 'Everyone']];
+  if (windows.supported()) L.push(['window', 'Grab a window', 'Everyone']);
+  if (hasPack('serverroom')) L.push(['outage', 'Break a server', 'Server Room']);
+  if (hasPack('outbreak')) L.push(['outbreak', 'Zombie outbreak', 'Outbreak'], ['supplydrop', 'Supply drop', 'Outbreak']);
+  if (hasPack('mitty')) L.push(['feed-chocolate', 'Feed Mitty chocolate', "Mitty's Pack"], ['feed-sweets', 'Feed Mitty sweets', "Mitty's Pack"]);
+  L.push(['fireworks', 'Fireworks', newYearTime() ? 'New Year' : 'New Year only', !newYearTime()]);
+  return L.map(([id, label, from, off]) => ({ id, label, from, off: !!off }));
+}
+// What one buddy can be asked to do (the same list as its right-click menu).
+function actionsFor(item, lv) {
+  if (item.kind !== 'pet') return [];
+  const a = [['sit', 'Sit'], ['sleep', 'Nap time'], ['walk', 'Go for a walk'], ['chase', 'Chase the mouse']];
+  if (!item.vehicle) a.push(['climb', 'Climb the wall'], ['grab', 'Pick something up']);
+  a.push(['battle', 'Start a battle']);
+  if (item.flies) a.push(['fly', 'Fly around']);
+  if (item.caster) a.push(['cast', 'Cast a spell']);
+  if (item.zombie) a.push(['bite', 'Bite someone']);
+  if (item.curer) a.push(['cure', 'Cure a zombie']);
+  if (lv >= 3) a.push(['trick', 'Show off a trick']);
+  return a.map(([id, label]) => ({ id, label }));
+}
+function centreState() {
+  const tester = PACKS.find(p => p.id === 'tester');
+  return {
+    version: app.getVersion(), testing: testerOn(), canTest: !!tester && packUnlocked(tester), ready: readyVersion, isMac: IS_MAC,
+    max: MAX_THINGS,
+    live: live.map(t => {
+      const it = ITEMS[t.id], lv = bucks.level(wallet.friends[t.id] || 0);
+      return { uid: t.uid, id: t.id, name: it.name, nick: wallet.names[t.id] || '', kind: it.kind, pack: it.pack.name, hat: t.hat, zombie: t.zombie,
+        level: it.kind === 'pet' ? lv : 0, levelName: it.kind === 'pet' ? bucks.LEVEL_NAMES[lv - 1] : '', acts: actionsFor(it, lv), hats: it.kind === 'pet' ? hatsFor(t.id) : [] };
+    }),
+    plays: playList(),
+    hatList: hatsFor(null),
+    settings: { mischief: !!settings.mischief, gore: !!settings.gore, goreShown: hasPack('outbreak'), snow: settings.snow || 'auto', hidden: !!settings.hidden,
+      scale: settings.scale, sizes: SIZES, login: IS_MAC ? null : app.getLoginItemSettings().openAtLogin, shareStats: !!settings.shareStats, buddyNews: settings.buddyNews !== false },
+    account: ACCOUNT_API ? (account ? { username: account.username || 'you' } : { signedOut: true }) : null,
+    keys: licence.status().keys.length
+  };
+}
+let pushT = null;
+function pushCentre() {
+  if (!shopWin || pushT) return;
+  pushT = setTimeout(() => { pushT = null; if (shopWin) shopWin.webContents.send('shop:update', shopState()); }, 250);
+}
+const SETTERS = {
+  mischief: v => { settings.mischief = !!v; send('set-mischief', settings.mischief); },
+  gore: v => { settings.gore = !!v; send('set-gore', settings.gore); },
+  hidden: v => { settings.hidden = !!v; send('set-hidden', settings.hidden); },
+  snow: v => { if (['auto', 'on', 'off'].includes(v)) { settings.snow = v; send('set-snow', snowOn()); } },
+  scale: v => { if (SIZES.some(x => x[1] === v)) { settings.scale = v; send('set-scale', v); } },
+  login: v => { if (!IS_MAC) app.setLoginItemSettings({ openAtLogin: !!v }); },
+  shareStats: v => { settings.shareStats = !!v; if (v) statsCheckIn(); },
+  buddyNews: v => { settings.buddyNews = !!v; }
+};
+ipcMain.handle('centre:set', async (_e, { key, value } = {}) => {
+  if (key === 'testVersions') await setTesting(!!value);
+  else if (SETTERS[key]) { SETTERS[key](value); saveSettings(); buildTrayMenu(); }
+  return shopState();
+});
+ipcMain.handle('centre:play', (_e, what) => { const p = playList().find(x => x.id === what && !x.off); if (p) playSend(p.id); return true; });
+ipcMain.handle('centre:thing', (_e, { uid, action } = {}) => {
+  const t = live.find(x => x.uid === uid);
+  if (!t || typeof action !== 'string') return false;
+  const it = ITEMS[t.id], lv = bucks.level(wallet.friends[t.id] || 0);
+  if (actionsFor(it, lv).some(a => a.id === action)) { playEarn(); send('thing-action', { uid, action }); }
+  else if (action === 'remove' || (it.kind === 'pet' && (action === 'hat-off' || (action.startsWith('hat:') && hatAllowed(action.slice(4), t.id))))) send('thing-action', { uid, action });
+  else return false;
+  return true;
+});
+ipcMain.handle('centre:clear', (_e, kind) => { if (['pet', 'build', 'all'].includes(kind)) send('clear', kind); return true; });
+ipcMain.handle('centre:do', (_e, what) => {
+  if (what === 'report') openReportWindow();
+  else if (what === 'status') shell.openExternal(STATUS_PAGE);
+  else if (what === 'signin') openSignInWindow();
+  else if (what === 'signout') signOut();
+  else if (what === 'sync') syncAccount({ announce: true });
+  else if (what === 'licence') openLicenceWindow();
+  else if (what === 'redeem') shell.openExternal(ACCOUNT_PAGE);
+  else if (what === 'restart' && readyVersion && autoUpdater) setImmediate(() => autoUpdater.quitAndInstall());
+  else if (what === 'update') checkForUpdates(true);
+  return true;
+});
 let shopWin = null;
 function openShopWindow(tab = 'shop') {
   if (shopWin) { shopWin.webContents.send('shop:tab', tab); shopWin.show(); shopWin.focus(); return; }
   shopWin = new BrowserWindow({
-    width: 760, height: 640, minWidth: 620, minHeight: 520, resizable: true, minimizable: true, maximizable: false,
-    fullscreenable: false, title: 'Bitty Shop', show: false, autoHideMenuBar: true, backgroundColor: '#8FCBF0',
+    width: 1040, height: 720, minWidth: 780, minHeight: 560, resizable: true, minimizable: true, maximizable: true,
+    fullscreenable: false, title: 'Bitty Buddies', show: false, autoHideMenuBar: true, backgroundColor: '#8FCBF0',
     webPreferences: { preload: path.join(__dirname, 'shop-window', 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
   shopWin.loadFile(path.join(__dirname, 'shop-window', 'shop.html'), { query: { tab } });
@@ -532,6 +625,7 @@ function shopState() {
     wallet: bucks.view(wallet), catalogue: bucks.CATALOGUE, book,
     hats: hatsFor(null).map(h => h.id), supporter: owns('supporter'), signedIn: !!account,
     store: steam.on ? 'steam' : 'web',
+    centre: centreState(),
     // on Steam the packs are DLC (and a Steam bundle), listed in package.json "bitty.steam"
     paid: (steam.on ? steam.shopList().map(p => ({ ...p, price: 'On Steam' })) : PAID_PACKS)
       .map(p => ({ id: p.id, name: p.name, price: p.price, blurb: p.blurb, packs: p.packs, owned: paidOwned(p) }))
@@ -667,109 +761,29 @@ function checkAdvent() {
 const playSend = what => { playEarn(); send('play', what); };
 
 function buildTrayMenu() {
-  const sizes = [['Small', 3], ['Medium', 4], ['Large', 6], ['Huge', 8]];
+  // Short on purpose: everything else lives in the Control Centre window.
   const menu = Menu.buildFromTemplate([
     { label: `Bitty Buddies v${app.getVersion()}${testerOn() ? ' · testing' : ''}`, enabled: false },
-    { type: 'separator' },
-    { label: `🪙 ${bucks.balance(wallet)} Buddy Bucks`, click: () => openShopWindow('shop') },
-    { label: '🛍️ Bitty Shop…', click: () => openShopWindow('shop') },
-    { label: '📖 Buddy Book…', click: () => openShopWindow('book') },
-    { label: '🛒 Get more packs…', click: () => openShopWindow('packs') },
+    { label: 'Open Bitty Buddies…', click: () => openShopWindow('play') },
     { type: 'separator' },
     { label: 'Spawn', submenu: spawnMenu('pet') },
     { label: 'Build', submenu: spawnMenu('build') },
-    {
-      label: 'Play', submenu: [
-        { label: 'Start a battle!', click: () => playSend('battle') },
-        { label: 'Throw a ball', click: () => playSend('ball') },
-        { label: 'Drop some treats', click: () => playSend('treats') },
-        ...(PACKS.some(p => p.id === 'serverroom' && packUnlocked(p)) ? [{ label: '💥 Break a server!', click: () => playSend('outage') }] : []),
-        ...(PACKS.some(p => p.id === 'mitty' && packUnlocked(p)) ? [{
-          label: 'Feed Mitty', submenu: [
-            { label: '🍫  Chocolate', click: () => playSend('feed-chocolate') },
-            { label: '🍬  Sweets', click: () => playSend('feed-sweets') }
-          ]
-        }] : []),
-        { label: 'Dance party!', click: () => playSend('party') },
-        ...(newYearTime() ? [{ label: '🎆 Fireworks!', click: () => playSend('fireworks') }] : []),
-        { label: 'Conga line!', click: () => playSend('conga') },
-        ...(PACKS.some(p => p.id === 'outbreak' && packUnlocked(p)) ? [
-          { label: '🧟 Zombie outbreak!', click: () => playSend('outbreak') },
-          { label: '📦 Supply drop!', click: () => playSend('supplydrop') }
-        ] : []),
-        { label: 'Move things around!', click: () => playSend('tidy') },
-        ...(windows.supported() ? [{ label: 'Grab a window!', click: () => playSend('window') }] : []),
-        { type: 'separator' },
-        {
-          label: 'Mischief (chasing, climbing, window tugging)', type: 'checkbox', checked: settings.mischief,
-          click: i => { settings.mischief = i.checked; saveSettings(); send('set-mischief', settings.mischief); }
-        },
-        ...(PACKS.some(p => p.id === 'outbreak' && packUnlocked(p)) ? [{
-          label: '🩸 Gore (Outbreak blood splats and trails)', type: 'checkbox', checked: !!settings.gore,
-          click: i => { settings.gore = i.checked; saveSettings(); send('set-gore', settings.gore); }
-        }] : [])
-      ]
-    },
-    {
-      label: 'Hats and outfits', submenu: [
-        ...hatsFor(null).map(h => ({ label: `${h.label} for everyone`, click: () => send('set-hats', h.id) })),
-        { label: 'Take all hats off', click: () => send('set-hats', null) },
-        { label: 'Get more in the Bitty Shop…', click: () => openShopWindow('shop') },
-        { type: 'separator' },
-        { label: 'Tip: right-click a pet to dress just that one', enabled: false }
-      ]
-    },
-    {
-      label: 'Snow', submenu: [
-        ['Auto (December to 6 January)', 'auto'], ['Always', 'on'], ['Off', 'off']
-      ].map(([label, v]) => ({
-        label, type: 'radio', checked: (settings.snow || 'auto') === v,
-        click: () => { settings.snow = v; saveSettings(); send('set-snow', snowOn()); }
-      }))
-    },
-    {
-      label: 'Clear', submenu: [
-        { label: 'Remove all pets', click: () => send('clear', 'pet') },
-        { label: 'Remove all builds', click: () => send('clear', 'build') },
-        { label: 'Remove everything', click: () => send('clear', 'all') }
-      ]
-    },
-    { type: 'separator' },
+    { label: 'Play', submenu: playList().filter(p => !p.off).map(p => ({ label: p.label, click: () => playSend(p.id) })) },
     {
       label: 'Hide everything', type: 'checkbox', checked: settings.hidden,
-      click: i => { settings.hidden = i.checked; saveSettings(); send('set-hidden', settings.hidden); }
-    },
-    {
-      label: 'Size', submenu: sizes.map(([label, v]) => ({
-        label, type: 'radio', checked: settings.scale === v,
-        click: () => { settings.scale = v; saveSettings(); send('set-scale', v); }
-      }))
-    },
-    {
-      label: 'Start with computer', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin,
-      click: i => app.setLoginItemSettings({ openAtLogin: i.checked })
-    },
-    {
-      label: 'Count me in the user stats (anonymous)', type: 'checkbox', checked: settings.shareStats,
-      click: i => { settings.shareStats = i.checked; saveSettings(); if (i.checked) statsCheckIn(); }
+      click: i => { settings.hidden = i.checked; saveSettings(); send('set-hidden', settings.hidden); pushCentre(); }
     },
     { type: 'separator' },
-    ...(!ACCOUNT_API ? [] : account ? [{
-      label: `Signed in as ${account.username || 'you'}`, submenu: [
-        { label: 'Check for new packs', click: () => syncAccount({ announce: true }) },
-        { label: 'Sign out', click: signOut }
-      ]
-    }] : [{ label: 'Sign in…', click: openSignInWindow }]),
+    { label: `🪙 ${bucks.balance(wallet)} Buddy Bucks`, click: () => openShopWindow('shop') },
+    { label: '🛒 Get more packs…', click: () => openShopWindow('packs') },
+    { type: 'separator' },
     // Updates check and download by themselves; the tray only shows up once one is ready to install.
     ...(readyVersion ? [{ label: `🎉 Restart to update to v${readyVersion}`, click: () => setImmediate(() => autoUpdater.quitAndInstall()) }] : []),
-    ...(packUnlocked(PACKS.find(p => p.id === 'tester') || {}) && PACKS.some(p => p.id === 'tester') ? [{
-      label: '🧪 Get test versions', type: 'checkbox', checked: !!settings.testVersions, click: i => setTesting(i.checked)
-    }] : []),
     { label: 'Report a problem…', click: openReportWindow },
-    { label: 'Service status', click: () => shell.openExternal(STATUS_PAGE) },
     { label: 'Quit', click: () => app.quit() }
   ]);
   tray.setContextMenu(menu);
+  pushCentre();
 }
 
 function createTray() {
@@ -779,7 +793,8 @@ function createTray() {
   tray = new Tray(icon);
   tray.setToolTip('Bitty Buddies');
   buildTrayMenu();
-  if (!IS_MAC) tray.on('click', () => tray.popUpContextMenu());
+  // Left-click opens the Control Centre; right-click shows the short menu.
+  if (!IS_MAC) tray.on('click', () => openShopWindow('play'));
 }
 
 // ---------- auto-update (GitHub Releases) ----------

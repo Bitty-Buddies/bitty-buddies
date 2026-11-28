@@ -171,6 +171,213 @@
   $('go-signin').onclick = () => window.shop.open('signin');
   $('go-licence').onclick = () => window.shop.open('licence');
 
+
+  // ---------- Control Centre ----------
+  const C = () => state.centre;
+  const who = t => t.nick ? `${t.nick}` : t.name;
+  let selUid = null, spawnKind = 'pet', spawnPack = '', lastPlay = '';
+  const hearts = n => '❤'.repeat(n) + '♡'.repeat(5 - n);
+  function sprite(id, hat, tight) {
+    const cv = el('canvas'); cv.setAttribute('aria-hidden', 'true');
+    const def = REG[id];
+    if (!tight || !def) { drawSprite(cv, id, { hat: hat || null }); return cv; }
+    const grid = PX.drawItem(def, { pose: 'idle', frame: 0, blink: false });   // just the sprite, so small rows show it big
+    cv.width = def.w; cv.height = def.h;
+    const ctx = cv.getContext('2d');
+    grid.forEach((row, y) => row.forEach((c, x) => { if (c) { ctx.fillStyle = c; ctx.fillRect(x, y, 1, 1); } }));
+    cv.style.objectFit = 'contain';
+    return cv;
+  }
+
+  function renderPlay() {
+    const c = C(), s = c.settings;
+    $('play-hide').textContent = s.hidden ? 'Show everyone' : 'Hide everyone';
+    const size = $('play-size');
+    if (!size.options.length) for (const [label, v] of s.sizes) size.append(new Option(label, String(v)));
+    size.value = String(s.scale);
+    const box = $('play-live'); box.textContent = '';
+    for (const t of c.live.slice(0, 12)) {
+      const b = el('button', 'tile'); b.type = 'button';
+      b.append(sprite(t.id, t.hat), el('b', null, who(t)), el('span', null, t.zombie ? 'Zombie!' : t.kind === 'pet' ? t.levelName : 'Build'));
+      b.onclick = () => { selUid = t.uid; showTab('onscreen'); renderOnScreen(); };
+      box.append(b);
+    }
+    $('play-live-empty').hidden = c.live.length > 0;
+    const plays = $('plays'); plays.textContent = '';
+    for (const p of c.plays) {
+      const b = el('button', 'play'); b.type = 'button'; b.disabled = p.off;
+      b.append(el('b', null, p.label), el('span', null, p.from));
+      b.onclick = () => { window.shop.play(p.id); lastPlay = `${p.label}: off they go!`; $('play-last').textContent = lastPlay; };
+      plays.append(b);
+    }
+    $('play-last').textContent = lastPlay || 'Tip: right-click any buddy on your desktop for its own menu.';
+    const quick = $('quick-spawn'); quick.textContent = '';
+    const have = state.book.filter(b => b.have);
+    const picks = [...have.filter(b => b.kind === 'pet').slice(0, 6), ...have.filter(b => b.kind === 'build').slice(0, 2)];
+    for (const b of picks) quick.append(spawnRow(b));
+  }
+  function spawnRow(b) {
+    const row = el('div', 'spawn');
+    const info = el('div'); info.append(el('b', null, b.name), el('span', null, b.packName));
+    const go = el('button', 'btn go', b.kind === 'build' ? 'Build' : 'Spawn'); go.type = 'button';
+    go.onclick = () => { window.shop.spawn(b.id); toast(`${state.wallet.names[b.id] || b.name} is on your desktop.`); };
+    if (C().live.length >= C().max) { go.disabled = true; go.title = `Your desktop is full (${C().max}). Remove someone first.`; }
+    row.append(sprite(b.id, null, true), info, go);
+    return row;
+  }
+
+  function renderSpawn() {
+    const q = $('spawn-q').value.trim().toLowerCase();
+    const kinds = $('spawn-kinds'); kinds.textContent = '';
+    for (const [k, label] of [['pet', 'Buddies'], ['build', 'Builds']]) {
+      const b = el('button', 'chip', label); b.type = 'button'; b.setAttribute('aria-pressed', String(spawnKind === k));
+      b.onclick = () => { spawnKind = k; spawnPack = ''; renderSpawn(); };
+      kinds.append(b);
+    }
+    const mine = state.book.filter(b => b.have && b.kind === spawnKind);
+    const packs = [...new Set(mine.map(b => b.packName))];
+    if (spawnPack && !packs.includes(spawnPack)) spawnPack = '';
+    const chips = $('spawn-packs'); chips.textContent = '';
+    for (const name of ['', ...packs]) {
+      const b = el('button', 'chip', name || 'All packs'); b.type = 'button'; b.setAttribute('aria-pressed', String(spawnPack === name));
+      b.onclick = () => { spawnPack = name; renderSpawn(); };
+      chips.append(b);
+    }
+    const list = $('spawn-list'); list.textContent = '';
+    const shown = mine.filter(b => (!spawnPack || b.packName === spawnPack) && (!q || `${b.name} ${b.packName} ${b.blurb} ${state.wallet.names[b.id] || ''}`.toLowerCase().includes(q)));
+    for (const b of shown) list.append(spawnRow(b));
+    $('spawn-empty').hidden = shown.length > 0;
+    $('spawn-intro').textContent = `${state.book.filter(b => b.have).length} buddies and builds to bring out. Up to ${C().max} at once.`;
+    const locked = [...new Set(state.book.filter(b => !b.have && b.licensed && b.kind === spawnKind).map(b => b.packName))];
+    const lk = $('spawn-locked'); lk.textContent = '';
+    if (locked.length) {
+      const p = el('p', 'cap'); p.style.marginTop = '14px';
+      p.append(document.createTextNode(`More in ${locked.join(', ')}. `));
+      const a = el('button', 'linkbtn', 'See packs'); a.type = 'button'; a.dataset.go = 'packs'; p.append(a);
+      lk.append(p);
+    }
+  }
+  $('spawn-q').oninput = () => renderSpawn();
+
+  function renderOnScreen() {
+    const c = C();
+    $('live-count').textContent = c.live.length ? String(c.live.length) : '';
+    const pets = c.live.filter(t => t.kind === 'pet').length;
+    $('live-intro').textContent = c.live.length ? `${pets} ${pets === 1 ? 'buddy' : 'buddies'} and ${c.live.length - pets} ${c.live.length - pets === 1 ? 'build' : 'builds'}. Pick one to name it, dress it or tell it what to do.` : 'Nobody is out right now.';
+    if (!c.live.some(t => t.uid === selUid)) selUid = c.live.length ? c.live[0].uid : null;
+    const list = $('live-list'); list.textContent = '';
+    for (const t of c.live) {
+      const b = el('button', 'live-row' + (t.uid === selUid ? ' on' : '')); b.type = 'button';
+      const info = el('div'); info.append(el('b', null, who(t)), el('span', null, t.nick ? t.name : t.pack));
+      b.append(sprite(t.id, null, true), info);
+      b.onclick = () => { selUid = t.uid; renderOnScreen(); };
+      list.append(b);
+    }
+    const d = $('live-detail'); d.textContent = '';
+    const t = c.live.find(x => x.uid === selUid);
+    d.hidden = !t;
+    if (!t) { list.append(el('p', 'empty', 'Spawn someone from the Playground.')); return; }
+    const top = el('div', 'who'); top.append(sprite(t.id, t.hat));
+    const info = el('div');
+    if (t.kind === 'pet') {
+      const lab = el('label', 'cap', 'Name'); lab.style.display = 'grid'; lab.style.gap = '2px'; lab.style.margin = '0';
+      const inp = el('input'); inp.maxLength = 20; inp.value = t.nick; inp.placeholder = `Name your ${t.name}`;
+      inp.onfocus = () => { editing = true; };
+      inp.onblur = async () => { editing = false; if (inp.value.trim() !== t.nick) render(await window.shop.name(t.id, inp.value)); };
+      inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
+      lab.append(inp); info.append(lab);
+    } else info.append(el('h2', null, t.name));
+    info.append(el('div', 'cap', `${t.name} from ${t.pack}${t.zombie ? '. Bitten! Only a medic can cure them.' : ''}`));
+    top.append(info); d.append(top);
+    if (t.kind === 'pet') {
+      const f = state.wallet.friends[t.id] || { minutes: 0, level: 1, name: state.wallet.levelNames[0] };
+      const w = state.wallet, next = w.levels[f.level], prev = w.levels[f.level - 1] || 0;
+      const fr = el('div'); fr.style.margin = '0 0 12px';
+      const line = el('div', 'row'); line.style.justifyContent = 'space-between'; line.style.margin = '0 0 4px';
+      const hb = el('b'); hb.append(el('span', 'hearts', hearts(f.level)), document.createTextNode(`  ${f.name}`)); line.append(hb, el('span', 'lvl', next ? `${Math.max(1, Math.ceil((next - f.minutes) / 60))}h out to ${w.levelNames[f.level]}` : 'Best possible friends'));
+      const bar = el('div', 'bar'), fill = el('i'); fill.style.width = next ? `${Math.min(100, Math.round(((f.minutes - prev) / (next - prev)) * 100))}%` : '100%'; bar.append(fill);
+      fr.append(line, bar); d.append(fr);
+      d.append(el('h2', null, `What should ${who(t)} do?`));
+      const acts = el('div', 'acts');
+      for (const a of t.acts) { const b = el('button', null, a.label); b.type = 'button'; b.onclick = () => window.shop.thing(t.uid, a.id); acts.append(b); }
+      d.append(acts);
+      d.append(el('h2', null, 'Hat'));
+      const hats = el('div', 'chips');
+      const none = el('button', 'chip', 'No hat'); none.type = 'button'; none.setAttribute('aria-pressed', String(!t.hat)); none.onclick = () => window.shop.thing(t.uid, 'hat-off'); hats.append(none);
+      for (const h of t.hats) { const b = el('button', 'chip', h.label); b.type = 'button'; b.setAttribute('aria-pressed', String(t.hat === h.id)); b.onclick = () => window.shop.thing(t.uid, `hat:${h.id}`); hats.append(b); }
+      d.append(hats);
+    }
+    const foot = el('div', 'foot-row');
+    const more = el('button', 'linkbtn', 'See them in the Buddy Book'); more.type = 'button'; more.dataset.go = 'book';
+    const rm = el('button', 'btn bad', `Remove ${who(t)}`); rm.type = 'button'; rm.onclick = () => window.shop.thing(t.uid, 'remove');
+    foot.append(more, rm); d.append(foot);
+  }
+
+  function renderHats() {
+    const box = $('hat-all'); box.textContent = '';
+    for (const h of C().hatList) { const b = el('button', 'btn', h.label); b.type = 'button'; b.onclick = () => { window.shop.hats(h.id); toast('Hats on!'); }; box.append(b); }
+  }
+  $('hat-none').onclick = () => { window.shop.hats(null); toast('Hats off.'); };
+
+  function sw(key, on, label, help, cb) {
+    const row = el('div', 'set'); const t = el('div'); t.append(el('b', null, label), el('span', null, help));
+    const b = el('button', 'switch'); b.type = 'button'; b.setAttribute('role', 'switch'); b.setAttribute('aria-checked', String(!!on)); b.setAttribute('aria-label', label);
+    b.onclick = async () => { b.disabled = true; render(cb ? await cb(!on) : await window.shop.set(key, !on)); };
+    row.append(t, b); return row;
+  }
+  function pickRow(key, label, help, opts, val) {
+    const row = el('div', 'set'); const t = el('div'); t.append(el('b', null, label), el('span', null, help));
+    const s = el('select'); s.setAttribute('aria-label', label);
+    for (const [l, v] of opts) s.append(new Option(l, String(v)));
+    s.value = String(val);
+    s.onchange = async () => render(await window.shop.set(key, key === 'scale' ? Number(s.value) : s.value));
+    row.append(t, s); return row;
+  }
+  function group(title, rows) { const c = el('div', 'card'); c.append(el('h2', null, title)); for (const r of rows) if (r) c.append(r); return c; }
+  function renderSettings() {
+    const s = C().settings, box = $('settings'); box.textContent = '';
+    box.append(
+      group('How buddies behave', [
+        sw('mischief', s.mischief, 'Mischief', 'Chasing the mouse, climbing and tugging windows'),
+        s.goreShown ? sw('gore', s.gore, 'Gore', 'Blood splats and trails in Outbreak') : null,
+        pickRow('snow', 'Snow', 'Snow falls and settles on your windows. Auto snows from 1 December to 6 January', [['Auto (in winter)', 'auto'], ['Always', 'on'], ['Off', 'off']], s.snow)
+      ]),
+      group('Your screen', [
+        sw('hidden', s.hidden, 'Hide everyone', 'Clear the screen without removing anyone'),
+        pickRow('scale', 'Size', 'How big buddies are', s.sizes, s.scale),
+        sw('buddyNews', s.buddyNews, 'Buddy news', 'A note when a buddy becomes a better friend')
+      ]),
+      group('This computer', [
+        s.login === null ? null : sw('login', s.login, 'Start with computer', 'Your buddies are there when you sign in'),
+        sw('shareStats', s.shareStats, 'Count me in the user stats', 'One anonymous count a day. No names, nothing else')
+      ])
+    );
+  }
+  function renderAccount() {
+    const c = C();
+    const a = c.account;
+    $('acct-text').textContent = !a ? 'Accounts aren\'t available in this version.' : a.username ? `Signed in as ${a.username}. Packs on your account unlock here by themselves, and your Buddy Bucks are backed up.` : 'Sign in to unlock packs from your account and back up your Buddy Bucks.';
+    const ab = $('acct-btns'); ab.textContent = '';
+    const btn = (label, act, cls) => { const b = el('button', 'btn' + (cls ? ' ' + cls : ''), label); b.type = 'button'; b.dataset.act = act; return b; };
+    if (a && a.username) ab.append(btn('Check for new packs', 'sync'), btn('Sign out', 'signout'));
+    else if (a) ab.append(btn('Sign in…', 'signin', 'go'));
+    $('keys-text').textContent = c.keys ? `${c.keys} licence key${c.keys === 1 ? '' : 's'} on this computer.` : 'No licence keys on this computer.';
+    $('upd-text').textContent = c.ready ? `Version ${c.ready} is ready to install. You're on ${c.version}.` : `You're on version ${c.version}${c.testing ? ' (test versions on)' : ''}. Updates download by themselves.`;
+    const ub = $('upd-btns'); ub.textContent = '';
+    ub.append(c.ready ? btn(`Restart to update to ${c.ready}`, 'restart', 'go') : btn('Check for updates', 'update'));
+    const t = $('upd-test'); t.textContent = '';
+    if (c.canTest) t.append(sw('testVersions', c.testing, 'Get test versions', 'Try new things before everyone else'));
+    $('foot-who').textContent = a && a.username ? a.username : 'Not signed in';
+    $('foot-ver').textContent = `v${c.version}${c.testing ? ', testing' : ''}`;
+  }
+  function renderCentre() {
+    renderPlay();
+    if (!editing) renderOnScreen(); else $('live-count').textContent = C().live.length ? String(C().live.length) : '';
+    renderSpawn(); renderHats(); renderSettings(); renderAccount();
+  }
+  $('play-hide').onclick = async () => render(await window.shop.set('hidden', !C().settings.hidden));
+  $('play-size').onchange = async () => render(await window.shop.set('scale', Number($('play-size').value)));
+
   function render(s) {
     if (s) state = s;
     if (!state) return;
@@ -178,21 +385,29 @@
     renderShop();
     renderPacks();
     if (!editing) renderBook();
+    if (state.centre) renderCentre();
   }
+  const TABS = ['play', 'spawn', 'onscreen', 'hats', 'book', 'packs', 'shop', 'settings', 'account'];
+  const TITLES = { play: 'Playground', spawn: 'Spawn and build', onscreen: 'On screen now', hats: 'Hats and outfits', book: 'Buddy Book', packs: 'Packs', shop: 'Bitty Shop', settings: 'Settings', account: 'Account and updates' };
   function showTab(tab) {
+    if (!TABS.includes(tab)) tab = 'play';
     for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', String(b.dataset.tab === tab));
-    $('panel-shop').hidden = tab !== 'shop';
-    $('panel-book').hidden = tab !== 'book';
-    $('panel-packs').hidden = tab !== 'packs';
-    document.title = tab === 'book' ? 'Buddy Book' : tab === 'packs' ? 'Bitty Buddies packs' : 'Bitty Shop';
+    for (const t of TABS) $('panel-' + t).hidden = t !== tab;
+    document.title = `${TITLES[tab]} · Bitty Buddies`;
+    document.querySelector('.content').scrollTop = 0;
   }
   for (const b of document.querySelectorAll('[data-tab]')) b.onclick = () => showTab(b.dataset.tab);
+  document.addEventListener('click', e => {
+    const g = e.target.closest('[data-go]'); if (g) showTab(g.dataset.go);
+    const a = e.target.closest('[data-act]'); if (a) window.shop.act(a.dataset.act);
+    const c = e.target.closest('[data-clear]'); if (c) { window.shop.clear(c.dataset.clear); toast(c.textContent + ': done.'); }
+  });
   window.shop.onTab(showTab);
   window.shop.onUpdate(s => { if (!editing) render(s); else { state = s; $('balance').textContent = String(s.wallet.balance); } });
 
   drawCoin($('coin'));
   const firstTab = new URLSearchParams(location.search).get('tab');
-  showTab(['book', 'packs'].includes(firstTab) ? firstTab : 'shop');
+  showTab(firstTab || 'play');
   window.shop.state().then(async s => {
     const files = [...new Set(['critters.js', ...s.book.map(b => b.file)])];
     await loadPacks(files);
